@@ -170,14 +170,3 @@ Invest-Hub/
 | [INVESTHUB_Queries.pdf](INVESTHUB_Queries.pdf) | SQL queries with output screenshots |
 | [FDs.pdf](FDs.pdf) | Functional Dependencies for all tables |
 
----
-
-## Contributing
-
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
----
-
-## License
-
-This project is for academic/educational purposes.
