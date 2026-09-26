@@ -6,6 +6,7 @@ import { LoginPage } from "./features/auth/LoginPage";
 import { RegisterPage } from "./features/auth/RegisterPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { PortfolioPage } from "./features/portfolio/PortfolioPage";
+import { StockDetailPage } from "./features/stocks/StockDetailPage";
 import { StocksPage } from "./features/stocks/StocksPage";
 import { TransactionsPage } from "./features/transactions/TransactionsPage";
 import { WatchlistPage } from "./features/watchlist/WatchlistPage";
@@ -27,6 +28,7 @@ export function AppRouter() {
           <Route path="portfolio" element={<PortfolioPage />} />
           <Route path="watchlist" element={<WatchlistPage />} />
           <Route path="stocks" element={<StocksPage />} />
+          <Route path="stocks/:symbol" element={<StockDetailPage />} />
           <Route path="transactions" element={<TransactionsPage />} />
           <Route path="account" element={<AccountPage />} />
         </Route>
