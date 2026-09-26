@@ -2,4 +2,5 @@ packages:
   - "server"
   - "web"
 allowBuilds:
+  bcrypt: true
   esbuild: true

@@ -75,6 +75,19 @@ CREATE TABLE watchlist_items (
     PRIMARY KEY (watchlist_id, symbol)
 );
 
+-- One row per issued refresh token, so logout and token rotation have an
+-- actual mechanism behind them instead of "trust the JWT until it expires".
+-- token_hash, never the raw token: if this table were ever exposed (a DB
+-- leak, a misconfigured backup), a hash can't be replayed as a real token
+-- the way a stored plaintext one could.
+CREATE TABLE refresh_tokens (
+    id         SERIAL PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE transactions (
     id          SERIAL PRIMARY KEY,
     user_id     INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
@@ -90,4 +103,5 @@ CREATE TABLE transactions (
 CREATE INDEX idx_price_history_symbol_date ON price_history (symbol, date DESC);
 CREATE INDEX idx_transactions_user_time ON transactions (user_id, executed_at DESC);
 CREATE INDEX idx_watchlists_user ON watchlists (user_id);
+CREATE INDEX idx_refresh_tokens_user ON refresh_tokens (user_id);
 CREATE INDEX idx_stocks_company_name_trgm ON stocks USING GIN (company_name gin_trgm_ops);

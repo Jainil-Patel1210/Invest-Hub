@@ -155,8 +155,9 @@ export class CachedPricingProvider implements PricingProvider {
       [symbol, FUNDAMENTALS_TTL_HOURS],
     );
 
-    if (rows.length > 0) {
-      return mapStockRow(rows[0]);
+    const cached = rows[0];
+    if (cached) {
+      return mapStockRow(cached);
     }
 
     return this.fetchAndStoreFundamentals(symbol);
@@ -171,8 +172,9 @@ export class CachedPricingProvider implements PricingProvider {
       [symbol, QUOTE_TTL_SECONDS],
     );
 
-    if (rows.length > 0) {
-      return mapQuoteRow(rows[0]);
+    const cached = rows[0];
+    if (cached) {
+      return mapQuoteRow(cached);
     }
 
     const quote = await this.inner.getQuote(symbol);
@@ -213,7 +215,12 @@ export class CachedPricingProvider implements PricingProvider {
     }>("SELECT MIN(date) AS min_date, MAX(date) AS max_date FROM price_history WHERE symbol = $1", [
       symbol,
     ]);
-    const { min_date: existingMin, max_date: existingMax } = rangeRows[0];
+    // A bare MIN()/MAX() aggregate with no GROUP BY always returns exactly one
+    // row, even when zero underlying rows match (min/max just come back NULL
+    // in that case) -- unlike the lookups above, this isn't a "might be
+    // missing" case, so the non-null assertion reflects a real SQL guarantee
+    // rather than an assumption.
+    const { min_date: existingMin, max_date: existingMax } = rangeRows[0]!;
 
     // Which sub-range(s), if any, do we not already have cached? This only
     // handles extending the cached range backward (a longer chart) or
