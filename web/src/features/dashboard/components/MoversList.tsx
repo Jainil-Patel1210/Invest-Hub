@@ -4,9 +4,10 @@ import { Delta } from "../../../components/Delta";
 import { formatINR } from "../../../lib/format";
 
 export function MoversList() {
-  const { data, isLoading } = useMovers(5);
+  const { data, isLoading, isError } = useMovers(5);
 
   if (isLoading) return <p className="text-sm text-text-secondary">Loading...</p>;
+  if (isError) return <p className="text-sm text-loss">Couldn&apos;t load movers right now.</p>;
 
   // Movers are scoped to stocks *you* track (holdings + watchlists) --
   // there's no universe-wide "top NSE gainers" here, since `stocks` is a

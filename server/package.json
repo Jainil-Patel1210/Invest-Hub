@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seedNifty50.ts",
+    "db:seed:demo": "tsx src/db/seedDemoUser.ts",
     "test": "vitest run"
   },
   "dependencies": {

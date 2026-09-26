@@ -5,11 +5,19 @@ import { formatINR } from "../../../lib/format";
 
 /** Shows the user's first watchlist as a compact strip -- the full tabbed view with every watchlist lives on the dedicated /watchlist page. */
 export function WatchlistStrip() {
-  const { data: watchlists, isLoading: listLoading } = useWatchlists();
+  const { data: watchlists, isLoading: listLoading, isError: listError } = useWatchlists();
   const firstId = watchlists?.[0]?.id ?? null;
-  const { data: detail, isLoading: detailLoading } = useWatchlistDetail(firstId);
+  const {
+    data: detail,
+    isLoading: detailLoading,
+    isError: detailError,
+  } = useWatchlistDetail(firstId);
 
   if (listLoading) return <p className="text-sm text-text-secondary">Loading...</p>;
+  // Distinct from "no watchlists yet" below -- an error here isn't a reason
+  // to tell the user to go create one, that would just be misleading.
+  if (listError)
+    return <p className="text-sm text-loss">Couldn&apos;t load your watchlists right now.</p>;
 
   if (!watchlists || watchlists.length === 0) {
     return (
@@ -23,7 +31,9 @@ export function WatchlistStrip() {
     );
   }
 
-  if (detailLoading || !detail) return <p className="text-sm text-text-secondary">Loading...</p>;
+  if (detailLoading) return <p className="text-sm text-text-secondary">Loading...</p>;
+  if (detailError || !detail)
+    return <p className="text-sm text-loss">Couldn&apos;t load this watchlist right now.</p>;
 
   return (
     <div>
