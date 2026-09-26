@@ -7,7 +7,9 @@ services:
       POSTGRES_PASSWORD: investhub_dev
       POSTGRES_DB: investhub
     ports:
-      - "5432:5432"
+      # Host port 5433 -> container port 5432. Not 5432:5432 -- a native
+      # Postgres install on this machine already owns host port 5432.
+      - "5433:5432"
     volumes:
       - investhub_pgdata:/var/lib/postgresql/data
     healthcheck:
