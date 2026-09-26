@@ -1,0 +1,15 @@
+{
+  "name": "investhub",
+  "private": true,
+  "scripts": {
+    "dev:server": "pnpm --filter @investhub/server dev",
+    "dev:web": "pnpm --filter @investhub/web dev",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9"
+  }
+}
