@@ -1,6 +1,34 @@
-:root {
-  color-scheme: light dark;
-  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+@import "tailwindcss";
+
+/*
+ * Tailwind v4 generates utility classes directly from these custom
+ * properties -- a variable named --color-X here produces bg-X, text-X,
+ * border-X, etc. automatically. No tailwind.config.js: theme customization
+ * lives in CSS now. Values match .claude/skills/frontend-design/SKILL.md --
+ * every color in the app should trace back to one of these tokens.
+ */
+@theme {
+  --color-bg: #0f1115;
+  --color-surface: #171a21;
+  --color-surface-raised: #1e222b;
+  --color-border: rgba(255, 255, 255, 0.08);
+
+  --color-text-primary: #e8eaed;
+  --color-text-secondary: #9aa1ac;
+  --color-text-tertiary: #5b616e;
+
+  --color-accent: #3b82f6;
+  --color-accent-muted: rgba(59, 130, 246, 0.15);
+  --color-highlight: #f59e0b;
+
+  --color-gain: #22c55e;
+  --color-gain-muted: rgba(34, 197, 94, 0.15);
+  --color-loss: #ef4444;
+  --color-loss-muted: rgba(239, 68, 68, 0.15);
+  --color-neutral: #8b93a1;
+
+  --font-sans: -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 * {
@@ -9,4 +37,15 @@
 
 body {
   margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+}
+
+/* Tabular numerals everywhere a price or quantity appears -- see the
+   frontend-design skill: this is the single highest-impact typography
+   detail for a finance UI, keeping digit widths fixed so a live-updating
+   price never jitters the layout around it. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
