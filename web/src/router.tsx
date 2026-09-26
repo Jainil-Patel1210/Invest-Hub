@@ -5,6 +5,7 @@ import { AccountPage } from "./features/account/AccountPage";
 import { LoginPage } from "./features/auth/LoginPage";
 import { RegisterPage } from "./features/auth/RegisterPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
+import { PortfolioDetailPage } from "./features/portfolio/PortfolioDetailPage";
 import { PortfolioPage } from "./features/portfolio/PortfolioPage";
 import { StockDetailPage } from "./features/stocks/StockDetailPage";
 import { StocksPage } from "./features/stocks/StocksPage";
@@ -26,6 +27,7 @@ export function AppRouter() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="portfolio" element={<PortfolioPage />} />
+          <Route path="portfolio/:symbol" element={<PortfolioDetailPage />} />
           <Route path="watchlist" element={<WatchlistPage />} />
           <Route path="stocks" element={<StocksPage />} />
           <Route path="stocks/:symbol" element={<StockDetailPage />} />
