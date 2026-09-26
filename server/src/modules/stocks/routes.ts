@@ -1,29 +1,9 @@
-import { Router, type Request } from "express";
-import { Errors } from "../../lib/errors";
+import { Router } from "express";
+import { getParam } from "../../lib/httpParams";
 import { pricingProvider } from "../../lib/pricing";
 import { validateQuery } from "../../middleware/validate";
 import { historyQuerySchema, searchQuerySchema, type HistoryRange } from "./schema";
 import { rangeToDates } from "./service";
-
-/**
- * Express 5's type inference for a route param (":symbol") turns out to
- * depend on how many handler functions a route passes: a route with a
- * single handler infers `req.params.symbol` as a precise `string`, but one
- * with a middleware in front of the handler (as three of these four routes
- * have, via validateQuery) widens it to `string | string[] | undefined`.
- * Rather than have some routes trust that inference and others need an `as`
- * cast, every route here goes through this one helper -- at runtime, a plain
- * named path segment (not a wildcard) is always a single string when
- * present, so this just makes that real guarantee explicit instead of
- * depending on inconsistent inference.
- */
-function getSymbolParam(req: Request): string {
-  const symbol = req.params.symbol;
-  if (typeof symbol !== "string") {
-    throw Errors.notFound("Stock");
-  }
-  return symbol;
-}
 
 const router = Router();
 
@@ -38,19 +18,19 @@ router.get("/search", validateQuery(searchQuerySchema), async (_req, res) => {
 });
 
 router.get("/:symbol", async (req, res) => {
-  const fundamentals = await pricingProvider.getFundamentals(getSymbolParam(req));
+  const fundamentals = await pricingProvider.getFundamentals(getParam(req, "symbol"));
   res.json(fundamentals);
 });
 
 router.get("/:symbol/quote", async (req, res) => {
-  const quote = await pricingProvider.getQuote(getSymbolParam(req));
+  const quote = await pricingProvider.getQuote(getParam(req, "symbol"));
   res.json(quote);
 });
 
 router.get("/:symbol/history", validateQuery(historyQuerySchema), async (req, res) => {
   const { range } = res.locals.query as { range: HistoryRange };
   const { from, to } = rangeToDates(range);
-  const candles = await pricingProvider.getHistory(getSymbolParam(req), from, to);
+  const candles = await pricingProvider.getHistory(getParam(req, "symbol"), from, to);
   res.json({ range, from, to, candles });
 });
 

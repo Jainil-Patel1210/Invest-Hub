@@ -30,4 +30,6 @@ export const Errors = {
   invalidToken: () => new AppError(401, "INVALID_TOKEN", "Invalid or expired token"),
   notFound: (resource: string) => new AppError(404, "NOT_FOUND", `${resource} not found`),
   emailTaken: () => new AppError(409, "EMAIL_TAKEN", "An account with this email already exists"),
+  watchlistNameTaken: () =>
+    new AppError(409, "WATCHLIST_NAME_TAKEN", "You already have a watchlist with this name"),
 };
