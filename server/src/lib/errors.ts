@@ -32,4 +32,16 @@ export const Errors = {
   emailTaken: () => new AppError(409, "EMAIL_TAKEN", "An account with this email already exists"),
   watchlistNameTaken: () =>
     new AppError(409, "WATCHLIST_NAME_TAKEN", "You already have a watchlist with this name"),
+  // 422, not 400: the request is structurally well-formed (a valid symbol,
+  // a valid positive quantity) -- it fails on a business rule evaluated
+  // against current state (your balance, your holdings), which is exactly
+  // the distinction 422 Unprocessable Entity exists to express.
+  insufficientFunds: () =>
+    new AppError(422, "INSUFFICIENT_FUNDS", "Insufficient account balance for this trade"),
+  insufficientHoldings: () =>
+    new AppError(
+      422,
+      "INSUFFICIENT_HOLDINGS",
+      "You don't hold enough shares to sell this quantity",
+    ),
 };

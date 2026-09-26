@@ -7,6 +7,8 @@ import authRoutes from "./modules/auth/routes";
 import marketRoutes from "./modules/market/routes";
 import portfolioRoutes from "./modules/portfolio/routes";
 import stocksRoutes from "./modules/stocks/routes";
+import tradeRoutes from "./modules/trade/routes";
+import transactionsRoutes from "./modules/transactions/routes";
 import watchlistRoutes from "./modules/watchlist/routes";
 
 const app = express();
@@ -38,6 +40,8 @@ app.use("/api/stocks", stocksRoutes);
 app.use("/api/market", marketRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/watchlists", watchlistRoutes);
+app.use("/api/trade", tradeRoutes);
+app.use("/api/transactions", transactionsRoutes);
 
 // Must be registered after every route -- see errorHandler.ts for why.
 app.use(errorHandler);
