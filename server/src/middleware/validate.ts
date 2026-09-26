@@ -22,3 +22,25 @@ export function validateBody(schema: ZodType): RequestHandler {
     next();
   };
 }
+
+/**
+ * Same idea for query strings (?range=1Y etc), but landing the validated
+ * result on `res.locals.query` rather than reassigning `req.query`.
+ * `req.query` conceptually means "the raw query string" -- overwriting its
+ * meaning with post-validation typed data is a confusing fit even where it
+ * happens to work, and Express 5 changed enough `req` internals from
+ * Express 4 that "happens to work" isn't something to lean on without
+ * checking. `res.locals` is guaranteed writable middleware-to-handler
+ * storage in every Express version, which sidesteps the question entirely.
+ */
+export function validateQuery(schema: ZodType): RequestHandler {
+  return (req, res, next) => {
+    const result = schema.safeParse(req.query);
+    if (!result.success) {
+      next(Errors.validation(z.flattenError(result.error)));
+      return;
+    }
+    res.locals.query = result.data;
+    next();
+  };
+}

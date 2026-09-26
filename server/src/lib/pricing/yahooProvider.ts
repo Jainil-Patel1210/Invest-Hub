@@ -1,5 +1,6 @@
 import YahooFinance from "yahoo-finance2";
 import { addDaysIso } from "./dateUtils";
+import { SymbolNotFoundError } from "./errors";
 import type {
   Candle,
   Exchange,
@@ -25,12 +26,27 @@ function exchangeFromSymbol(symbol: string): Exchange {
   );
 }
 
+/**
+ * yahoo-finance2 doesn't export a distinguishable "symbol not found" error
+ * type, and different calls don't even agree on wording: quoteSummary()
+ * throws "Quote not found for symbol: X", chart() throws "No data found,
+ * symbol may be delisted". Matching on substrings is the best signal
+ * available without one -- if a future version changes this wording, the
+ * failure degrades to a generic error rather than breaking anything outright.
+ */
+function isNotFoundError(err: unknown): boolean {
+  return err instanceof Error && /quote not found|no data found|delisted/i.test(err.message);
+}
+
 export class YahooPricingProvider implements PricingProvider {
   async getQuote(symbol: string): Promise<Quote> {
+    // Confirmed directly: quote() resolves to `undefined` for an unknown
+    // symbol rather than throwing -- a third distinct "not found" convention
+    // alongside the two below. `!q` must be checked before touching any
+    // field on it.
     const q = await yahooFinance.quote(symbol);
-
-    if (q.regularMarketPrice == null || q.regularMarketPreviousClose == null) {
-      throw new Error(`No live price available for "${symbol}"`);
+    if (!q || q.regularMarketPrice == null || q.regularMarketPreviousClose == null) {
+      throw new SymbolNotFoundError(symbol);
     }
 
     return {
@@ -49,13 +65,23 @@ export class YahooPricingProvider implements PricingProvider {
   }
 
   async getFundamentals(symbol: string): Promise<StockFundamentals> {
+    // .catch() chained directly on the Promise.all() call, rather than a
+    // try/catch around pre-declared variables, lets TypeScript infer quote's
+    // and summary's types normally from Promise.all's own overloads --
+    // yahooFinance.quoteSummary is itself overloaded/generic, and manually
+    // annotating hoisted variables with ReturnType<typeof ...> for it
+    // resolves to `unknown` because ReturnType can't know which overload a
+    // specific call would pick.
     const [quote, summary] = await Promise.all([
       yahooFinance.quote(symbol),
       yahooFinance.quoteSummary(symbol, { modules: ["assetProfile"] }),
-    ]);
+    ]).catch((err: unknown) => {
+      if (isNotFoundError(err)) throw new SymbolNotFoundError(symbol);
+      throw err;
+    });
 
-    if (!quote.longName) {
-      throw new Error(`No company data available for "${symbol}"`);
+    if (!quote || !quote.longName) {
+      throw new SymbolNotFoundError(symbol);
     }
 
     return {
@@ -80,11 +106,12 @@ export class YahooPricingProvider implements PricingProvider {
     // day's candle. Push our inclusive `to` one day past itself to translate
     // between the two conventions, entirely inside this Yahoo-specific class
     // rather than leaking Yahoo's quirk into the cache layer or the interface.
-    const result = await yahooFinance.chart(symbol, {
-      period1: from,
-      period2: addDaysIso(to, 1),
-      interval: "1d",
-    });
+    const result = await yahooFinance
+      .chart(symbol, { period1: from, period2: addDaysIso(to, 1), interval: "1d" })
+      .catch((err: unknown) => {
+        if (isNotFoundError(err)) throw new SymbolNotFoundError(symbol);
+        throw err;
+      });
 
     return result.quotes
       .filter((q) => q.open != null && q.high != null && q.low != null && q.close != null)

@@ -1,5 +1,6 @@
 import type { ErrorRequestHandler } from "express";
 import { AppError } from "../lib/errors";
+import { SymbolNotFoundError } from "../lib/pricing/errors";
 
 /**
  * Express identifies error-handling middleware purely by counting its
@@ -17,6 +18,16 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
         message: err.message,
         ...(err.details ? { details: err.details } : {}),
       },
+    });
+    return;
+  }
+
+  // Translated centrally, here, rather than in every route that might touch
+  // an unknown symbol -- a route just calls pricingProvider.getFundamentals()
+  // and lets Express 5's automatic promise-rejection forwarding do the rest.
+  if (err instanceof SymbolNotFoundError) {
+    res.status(404).json({
+      error: { code: "SYMBOL_NOT_FOUND", message: err.message },
     });
     return;
   }
