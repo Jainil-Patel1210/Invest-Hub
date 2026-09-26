@@ -49,6 +49,12 @@ export interface SearchResult {
 export interface PricingProvider {
   getQuote(symbol: string): Promise<Quote>;
   getFundamentals(symbol: string): Promise<StockFundamentals>;
-  getHistory(symbol: string, from: Date, to: Date): Promise<Candle[]>;
+  /** `from`/`to` are ISO calendar dates ("YYYY-MM-DD") -- deliberately not
+   *  Date objects. A date range like this has no time-of-day or timezone
+   *  component, and mixing plain-string-parsed dates with database-sourced
+   *  dates as JS Date objects is exactly what caused a real off-by-one-day
+   *  bug during development (see cache.ts). Keeping both ends of this as
+   *  plain strings removes that whole failure mode. */
+  getHistory(symbol: string, from: string, to: string): Promise<Candle[]>;
   search(query: string): Promise<SearchResult[]>;
 }

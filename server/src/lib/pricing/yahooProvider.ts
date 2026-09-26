@@ -1,4 +1,5 @@
 import YahooFinance from "yahoo-finance2";
+import { addDaysIso } from "./dateUtils";
 import type {
   Candle,
   Exchange,
@@ -72,10 +73,16 @@ export class YahooPricingProvider implements PricingProvider {
     };
   }
 
-  async getHistory(symbol: string, from: Date, to: Date): Promise<Candle[]> {
+  async getHistory(symbol: string, from: string, to: string): Promise<Candle[]> {
+    // Our own interface treats `to` as inclusive (the natural reading of
+    // "history from X to Y"), but Yahoo's `period2` is exclusive -- verified
+    // directly: requesting period2 on a real trading day still omits that
+    // day's candle. Push our inclusive `to` one day past itself to translate
+    // between the two conventions, entirely inside this Yahoo-specific class
+    // rather than leaking Yahoo's quirk into the cache layer or the interface.
     const result = await yahooFinance.chart(symbol, {
       period1: from,
-      period2: to,
+      period2: addDaysIso(to, 1),
       interval: "1d",
     });
 
