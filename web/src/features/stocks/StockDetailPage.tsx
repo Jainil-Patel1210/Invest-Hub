@@ -2,12 +2,12 @@ import { useParams } from "react-router-dom";
 import { ApiError } from "../../api/client";
 import { useStock, useStockQuote } from "../../api/hooks/stocks";
 import { Delta } from "../../components/Delta";
+import { SkeletonList } from "../../components/Skeleton";
 import { formatINR } from "../../lib/format";
 import { FundamentalsPanel } from "./components/FundamentalsPanel";
 import { PriceChart } from "./components/PriceChart";
 import { TradePanel } from "./components/TradePanel";
 import { WatchlistButton } from "./components/WatchlistButton";
-import { SkeletonList } from "../../components/Skeleton";
 
 export function StockDetailPage() {
   const { symbol } = useParams<{ symbol: string }>();
@@ -35,11 +35,11 @@ export function StockDetailPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold">{stock.companyName}</h1>
-            <span className="rounded bg-surface-raised px-2 py-0.5 text-xs text-text-secondary">
+            <span className="rounded-full bg-surface-raised px-2 py-0.5 text-xs text-text-secondary">
               {stock.exchange}
             </span>
           </div>
@@ -52,7 +52,7 @@ export function StockDetailPage() {
                   {formatINR(quote.price)}
                 </span>
                 <Delta value={quote.dayChange} kind="currency" showGlyph />
-                <Delta value={quote.dayChangePct} kind="percent" />
+                <Delta value={quote.dayChangePct} kind="percent" pill />
               </>
             ) : (
               <span className="text-sm text-text-secondary">Loading price...</span>
@@ -68,7 +68,7 @@ export function StockDetailPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <FundamentalsPanel stock={stock} />
+        <FundamentalsPanel stock={stock} quote={quote} />
         <TradePanel symbol={symbol} />
       </div>
     </div>

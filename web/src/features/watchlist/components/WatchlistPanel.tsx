@@ -42,15 +42,15 @@ function AddStockSearch({ watchlistId }: { watchlistId: number }) {
         placeholder="Add a stock..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="w-64 rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-accent-muted"
+        className="w-64 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-accent-muted"
       />
       {debounced.trim() !== "" && results && results.length === 0 && !isFetching && (
-        <p className="absolute right-0 z-10 mt-1 w-64 rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text-secondary shadow-lg">
+        <p className="glass absolute right-0 z-10 mt-1 w-64 rounded-lg px-3 py-2 text-sm text-text-secondary">
           No stocks found.
         </p>
       )}
       {debounced.trim() !== "" && results && results.length > 0 && (
-        <div className="absolute right-0 z-10 mt-1 w-64 rounded-md border border-border bg-surface-raised shadow-lg">
+        <div className="glass absolute right-0 z-10 mt-1 w-64 rounded-lg">
           {results.slice(0, 6).map((r) => (
             <button
               key={r.symbol}
@@ -153,12 +153,12 @@ export function WatchlistPanel({ watchlist }: { watchlist: WatchlistSummary }) {
         <div className="flex items-center gap-2">
           <AddStockSearch watchlistId={watchlist.id} />
           {confirmingDelete ? (
-            <span className="flex items-center gap-1.5 text-xs">
+            <span className="flex items-center gap-1.5 rounded-md bg-loss-muted px-2.5 py-1.5 text-xs">
               <span className="text-text-secondary">Delete this watchlist?</span>
               <button
                 type="button"
                 onClick={() => void deleteWatchlist.mutateAsync(watchlist.id)}
-                className="text-loss hover:underline"
+                className="font-medium text-loss hover:underline"
               >
                 Yes
               </button>
@@ -190,7 +190,7 @@ export function WatchlistPanel({ watchlist }: { watchlist: WatchlistSummary }) {
         <div className="overflow-x-auto panel">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-surface text-text-secondary">
+              <tr className="border-b border-border">
                 <th className="px-4 py-2.5 text-left font-medium">Stock</th>
                 <th className="px-4 py-2.5 text-right font-medium">Price</th>
                 <th className="px-4 py-2.5 text-right font-medium">Change</th>

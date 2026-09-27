@@ -1,8 +1,9 @@
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { ApiError } from "../../api/client";
 import { useCreateWatchlist, useWatchlists } from "../../api/hooks/watchlists";
-import { WatchlistPanel } from "./components/WatchlistPanel";
 import { SkeletonList } from "../../components/Skeleton";
+import { WatchlistPanel } from "./components/WatchlistPanel";
 
 export function WatchlistPage() {
   const { data: watchlists, isLoading } = useWatchlists();
@@ -48,17 +49,24 @@ export function WatchlistPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-2xl font-semibold tracking-tight">Watchlist</h1>
+      <div>
+        <div className="text-xs font-medium uppercase tracking-wider text-text-secondary">
+          Tracked instruments
+        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">Watchlist</h1>
+      </div>
 
-      <div className="flex flex-wrap items-center gap-1 border-b border-border pb-2">
+      <div className="flex flex-wrap items-center gap-1 rounded-lg bg-sidebar p-1" role="tablist">
         {watchlists?.map((w) => (
           <button
             key={w.id}
             type="button"
+            role="tab"
+            aria-selected={w.id === selectedId}
             onClick={() => setExplicitSelectedId(w.id)}
-            className={`rounded-t-md px-3 py-1.5 text-sm transition-colors ${
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               w.id === selectedId
-                ? "bg-surface-raised text-text-primary"
+                ? "bg-surface-raised text-text-primary shadow-[inset_2px_0_0_var(--color-accent-strong)]"
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -74,12 +82,12 @@ export function WatchlistPage() {
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && void handleCreate()}
               placeholder="Watchlist name"
-              className="rounded-md border border-border bg-bg px-2 py-1 text-sm text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-accent-muted"
+              className="rounded-md bg-surface px-2 py-1 text-sm text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-accent-muted"
             />
             <button
               type="button"
               onClick={() => void handleCreate()}
-              className="text-xs text-accent hover:underline"
+              className="text-xs font-medium text-accent hover:underline"
             >
               Create
             </button>
@@ -100,9 +108,10 @@ export function WatchlistPage() {
           <button
             type="button"
             onClick={() => setIsCreating(true)}
-            className="px-3 py-1.5 text-sm text-text-secondary hover:text-accent"
+            className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-text-secondary hover:text-accent"
           >
-            + New
+            <Plus size={14} aria-hidden="true" />
+            New
           </button>
         )}
       </div>
@@ -118,9 +127,9 @@ export function WatchlistPage() {
         // not by reading the code.
         <WatchlistPanel key={selected.id} watchlist={selected} />
       ) : (
-        <p className="text-sm text-text-secondary">
+        <div className="panel p-6 text-sm text-text-secondary">
           You don&apos;t have any watchlists yet -- create one above.
-        </p>
+        </div>
       )}
     </div>
   );

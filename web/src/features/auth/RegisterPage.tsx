@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { TrendingUp } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "../../api/client";
 import { useAuth } from "../../lib/useAuth";
@@ -45,8 +46,21 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4 text-text-primary">
-      <div className="w-full max-w-sm panel p-8">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-bg px-4 text-text-primary">
+      {/* Ambient glow, purely decorative -- aria-hidden and never the sole
+          carrier of any information. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-0 h-[32rem] w-[32rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-accent/10 blur-3xl"
+      />
+      <div className="relative w-full max-w-sm panel p-8">
+        <div className="mb-6 flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-muted text-accent">
+            <TrendingUp size={20} strokeWidth={2.25} aria-hidden="true" />
+          </span>
+          <span className="text-lg font-semibold tracking-tight">InvestHub</span>
+        </div>
+
         <h1 className="mb-1 text-xl font-semibold">Create your account</h1>
         <p className="mb-6 text-sm text-text-secondary">
           Starts you with a virtual ₹10,00,000 to track a portfolio with.
