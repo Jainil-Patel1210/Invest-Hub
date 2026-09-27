@@ -4,6 +4,8 @@ A personal portfolio management and analysis app for Indian equities (NSE/BSE) �
 
 Originally a PostgreSQL-only database-design coursework project (25 tables modeling brokers, analysts, mutual funds, IPOs, and institutional investors — kept for reference under [`docs/legacy/`](docs/legacy/)). Rebuilt from scratch as a full-stack app with a deliberately narrower, sharper scope: portfolio tracking, watchlists, and real market data, with the institutional-investor layer dropped entirely.
 
+**Live demo:** https://invest-hub-web.vercel.app/ (free-tier hosting, so the first load after idle can take up to a minute)
+
 ## What it does
 
 - **Real market data** — live quotes, historical price charts, and fundamentals (sector, P/E, EPS, market cap, 52-week range) for any NSE/BSE stock, sourced from Yahoo Finance
