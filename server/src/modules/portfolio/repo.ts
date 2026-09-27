@@ -55,3 +55,39 @@ export async function getTransactionsForSymbol(
   );
   return rows;
 }
+
+export interface TradeRow {
+  symbol: string;
+  type: "BUY" | "SELL";
+  quantity: number;
+  price: string;
+  fee: string;
+  total: string;
+  trade_date: string;
+}
+
+/**
+ * Every trade the user has made, oldest first, for the P&L / XIRR / equity
+ * curve calculations. The date is converted to Indian calendar time in SQL
+ * (a trade at 00:30 IST is still the previous day in UTC -- taking the date
+ * from the raw timestamp would put it on the wrong trading day).
+ */
+export async function getAllTrades(userId: number): Promise<TradeRow[]> {
+  const { rows } = await pool.query<TradeRow>(
+    `SELECT symbol, type, quantity, price, fee, total,
+            to_char(executed_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD') AS trade_date
+     FROM transactions
+     WHERE user_id = $1
+     ORDER BY executed_at ASC, id ASC`,
+    [userId],
+  );
+  return rows;
+}
+
+export async function getBalance(userId: number): Promise<number> {
+  const { rows } = await pool.query<{ account_balance: string }>(
+    "SELECT account_balance FROM users WHERE id = $1",
+    [userId],
+  );
+  return Number(rows[0]?.account_balance ?? 0);
+}

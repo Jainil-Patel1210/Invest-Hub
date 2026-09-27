@@ -23,7 +23,7 @@ Originally a PostgreSQL-only database-design coursework project (25 tables model
 | Auth        | JWT access tokens (in-memory, short-lived) + rotating opaque refresh tokens (httpOnly cookie, DB-backed, revocable)                                  |
 | Market data | Yahoo Finance (via `yahoo-finance2`), cached in Postgres behind a provider-agnostic interface                                                        |
 | Frontend    | React 19, Vite, TypeScript, Tailwind CSS v4, TanStack Query, React Router, Recharts                                                                  |
-| Testing     | Vitest + Supertest (65 backend integration tests against a real database and real market data)                                                       |
+| Testing     | Vitest + Supertest (94 backend tests against a real database and real market data)                                                       |
 
 ## Project structure
 

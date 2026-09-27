@@ -96,6 +96,11 @@ export class YahooPricingProvider implements PricingProvider {
     return quotes;
   }
 
+  // Yahoo serves an index's daily chart exactly like a stock's.
+  getIndexHistory(symbol: string, from: string, to: string): Promise<Candle[]> {
+    return this.getHistory(symbol, from, to);
+  }
+
   // Same bulk call as getQuotes -- Yahoo prices an index like any other symbol.
   getIndexQuotes(symbols: string[]): Promise<Quote[]> {
     return this.getQuotes(symbols);

@@ -47,6 +47,11 @@ describe("portfolio", () => {
       currentValue: 0,
       totalPnl: 0,
       totalPnlPct: 0,
+      realizedPnl: 0,
+      feesPaid: 0,
+      xirrPct: null,
+      bestPerformer: null,
+      worstPerformer: null,
       dayPnl: 0,
       sectorAllocation: [],
     });

@@ -202,6 +202,20 @@ export class CachedPricingProvider implements PricingProvider {
     return quotes;
   }
 
+  // Index history is cached in memory for an hour: it changes at most once a
+  // day, and a restart just refetches it (a single cheap Yahoo call).
+  private indexHistoryCache = new Map<string, { candles: Candle[]; fetchedAt: number }>();
+
+  async getIndexHistory(symbol: string, from: string, to: string): Promise<Candle[]> {
+    const key = `${symbol}|${from}|${to}`;
+    const cached = this.indexHistoryCache.get(key);
+    if (cached && Date.now() - cached.fetchedAt < 60 * 60 * 1000) return cached.candles;
+
+    const candles = await this.inner.getIndexHistory(symbol, from, to);
+    this.indexHistoryCache.set(key, { candles, fetchedAt: Date.now() });
+    return candles;
+  }
+
   /** Bulk upsert into quote_cache: one statement for any number of quotes (unnest turns parallel arrays into rows). */
   private async storeQuotes(quotes: Quote[]): Promise<void> {
     if (quotes.length === 0) return;

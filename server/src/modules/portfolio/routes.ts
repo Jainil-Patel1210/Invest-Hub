@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { getParam } from "../../lib/httpParams";
 import { requireAuth } from "../../middleware/requireAuth";
+import { validateQuery } from "../../middleware/validate";
+import type { HistoryRange } from "../stocks/schema";
+import { performanceQuerySchema } from "./schema";
 import * as service from "./service";
 
 const router = Router();
@@ -22,6 +25,12 @@ router.get("/", async (req, res) => {
 router.get("/summary", async (req, res) => {
   const summary = await service.getSummary(req.userId!);
   res.json(summary);
+});
+
+router.get("/performance", validateQuery(performanceQuerySchema), async (req, res) => {
+  const { range } = res.locals.query as { range: HistoryRange };
+  const performance = await service.getPerformance(req.userId!, range);
+  res.json(performance);
 });
 
 router.get("/:symbol", async (req, res) => {

@@ -1,4 +1,16 @@
 import { Errors } from "../../lib/errors";
+import {
+  buildEquityCurve,
+  realizedPnl,
+  sumFees,
+  xirr,
+  xirrFlows,
+  type CloseLookup,
+  type Trade,
+} from "../../lib/finance";
+import { addDaysIso } from "../../lib/pricing/dateUtils";
+import type { HistoryRange } from "../stocks/schema";
+import { rangeToDates } from "../stocks/service";
 import { pricingProvider } from "../../lib/pricing";
 import type { Quote } from "../../lib/pricing/types";
 import * as repo from "./repo";
@@ -88,17 +100,52 @@ export interface SectorAllocation {
   percentage: number;
 }
 
+export interface HoldingPerformance {
+  symbol: string;
+  pnlPct: number;
+}
+
 export interface PortfolioSummary {
   investedValue: number;
   currentValue: number;
+  /** Unrealized: what the current holdings are up/down versus their cost. */
   totalPnl: number;
   totalPnlPct: number;
+  /** Profit locked in by past sells, before charges. */
+  realizedPnl: number;
+  /** All fees paid across every trade. */
+  feesPaid: number;
+  /** Annualized money-weighted return as a percentage, or null when it cannot be honestly computed (see finance.xirr). */
+  xirrPct: number | null;
+  bestPerformer: HoldingPerformance | null;
+  worstPerformer: HoldingPerformance | null;
   dayPnl: number;
   sectorAllocation: SectorAllocation[];
 }
 
+function toTrade(row: repo.TradeRow): Trade {
+  return {
+    date: row.trade_date,
+    symbol: row.symbol,
+    type: row.type,
+    quantity: row.quantity,
+    price: Number(row.price),
+    fee: Number(row.fee),
+    total: Number(row.total),
+  };
+}
+
+function todayIst(): string {
+  // Shift to IST, then read the UTC fields -- the calendar date in India regardless of server timezone.
+  return new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
 export async function getSummary(userId: number): Promise<PortfolioSummary> {
-  const holdings = await getEnrichedHoldings(userId);
+  const [holdings, tradeRows] = await Promise.all([
+    getEnrichedHoldings(userId),
+    repo.getAllTrades(userId),
+  ]);
+  const trades = tradeRows.map(toTrade);
 
   const investedValue = holdings.reduce((sum, h) => sum + h.investedValue, 0);
 
@@ -125,13 +172,132 @@ export async function getSummary(userId: number): Promise<PortfolioSummary> {
     }))
     .sort((a, b) => b.value - a.value);
 
+  // Best/worst by % return, over holdings whose live price is known.
+  const ranked = knownCurrent
+    .filter((h) => h.pnlPct !== null)
+    .map((h) => ({ symbol: h.symbol, pnlPct: h.pnlPct! }))
+    .sort((a, b) => b.pnlPct - a.pnlPct);
+
+  const rate = xirr(xirrFlows(trades, currentValue, todayIst()));
+
   return {
     investedValue,
     currentValue,
     totalPnl,
     totalPnlPct: investedValue > 0 ? (totalPnl / investedValue) * 100 : 0,
+    realizedPnl: realizedPnl(trades),
+    feesPaid: sumFees(trades),
+    xirrPct: rate === null ? null : rate * 100,
+    bestPerformer: ranked[0] ?? null,
+    worstPerformer: ranked[ranked.length - 1] ?? null,
     dayPnl,
     sectorAllocation,
+  };
+}
+
+export interface PerformancePoint {
+  date: string;
+  netWorth: number;
+  /** NIFTY 50 rebased to the portfolio's starting value; null if index data was unavailable. */
+  benchmark: number | null;
+}
+
+export interface Performance {
+  range: HistoryRange;
+  series: PerformancePoint[];
+  changePct: number | null;
+  benchmarkChangePct: number | null;
+}
+
+const BENCHMARK_SYMBOL = "^NSEI";
+// Extra days fetched before the range so a holding has a "last close" to
+// carry forward on the range's first day, even if it starts on a weekend.
+const LEAD_IN_DAYS = 10;
+
+/**
+ * Net worth over time (cash + holdings at each day's close), plus NIFTY 50
+ * rebased to the same starting value so the two lines are directly
+ * comparable. Rebuilt from the trade history and cached daily prices -- no
+ * portfolio snapshots are stored, so it is always consistent with the trades
+ * on record, including back-dated ones.
+ */
+export async function getPerformance(userId: number, range: HistoryRange): Promise<Performance> {
+  const tradeRows = await repo.getAllTrades(userId);
+  if (tradeRows.length === 0) {
+    return { range, series: [], changePct: null, benchmarkChangePct: null };
+  }
+
+  const trades = tradeRows.map(toTrade);
+  const { from, to } = rangeToDates(range);
+  const leadFrom = addDaysIso(from, -LEAD_IN_DAYS);
+
+  // Cash before the first trade = today's cash with every trade's cash effect undone.
+  const balance = await repo.getBalance(userId);
+  const netCashFlow = trades.reduce((s, t) => s + (t.type === "SELL" ? t.total : -t.total), 0);
+  const startBalance = balance - netCashFlow;
+
+  const symbols = [...new Set(trades.map((t) => t.symbol))];
+  const [histories, benchmark] = await Promise.all([
+    Promise.all(symbols.map((s) => pricingProvider.getHistory(s, leadFrom, to))),
+    pricingProvider.getIndexHistory(BENCHMARK_SYMBOL, leadFrom, to).catch(() => null),
+  ]);
+
+  const closes: CloseLookup = new Map(
+    symbols.map((symbol, i) => [symbol, new Map(histories[i]!.map((c) => [c.date, c.close]))]),
+  );
+
+  // Trading days: the index's own calendar when available, otherwise the union of held symbols' days.
+  const dates = benchmark
+    ? benchmark.map((c) => c.date)
+    : [...new Set(histories.flat().map((c) => c.date))].sort();
+
+  // Always end the curve at today's date. On a weekend or holiday there is no
+  // new trading day, so without this a trade placed today would not appear
+  // until the next session -- the point carries the last close forward.
+  const today = todayIst();
+  if (dates.length === 0 || dates[dates.length - 1]! < today) dates.push(today);
+
+  const curve = buildEquityCurve(trades, startBalance, closes, dates).filter((p) => p.date >= from);
+  if (curve.length === 0) {
+    return { range, series: [], changePct: null, benchmarkChangePct: null };
+  }
+
+  const first = curve[0]!;
+
+  // The index's latest close on or before a date (carried across weekends/holidays,
+  // exactly like the holdings' prices), so the first point of the curve -- which
+  // can itself fall on a non-trading day -- still has a base to rebase against.
+  const indexCandles = benchmark ?? [];
+  let cursor = 0;
+  let latestIndex: number | undefined;
+  const indexAt = (date: string): number | undefined => {
+    // `curve` is in date order, so the cursor only ever moves forward.
+    while (cursor < indexCandles.length && indexCandles[cursor]!.date <= date) {
+      latestIndex = indexCandles[cursor]!.close;
+      cursor++;
+    }
+    return latestIndex;
+  };
+
+  const baseIndex = indexAt(first.date);
+
+  const series: PerformancePoint[] = curve.map((p) => {
+    const idx = indexAt(p.date);
+    return {
+      date: p.date,
+      netWorth: p.netWorth,
+      benchmark: baseIndex && idx ? first.netWorth * (idx / baseIndex) : null,
+    };
+  });
+
+  const last = series[series.length - 1]!;
+  const pct = (end: number, start: number) => (start > 0 ? ((end - start) / start) * 100 : null);
+
+  return {
+    range,
+    series,
+    changePct: pct(last.netWorth, first.netWorth),
+    benchmarkChangePct: last.benchmark !== null ? pct(last.benchmark, first.netWorth) : null,
   };
 }
 

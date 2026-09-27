@@ -53,6 +53,8 @@ export interface PricingProvider {
   getQuotes(symbols: string[]): Promise<Quote[]>;
   /** Quotes for market indices (e.g. "^NSEI"). Indices aren't rows in `stocks`, so they bypass the stock cache. */
   getIndexQuotes(symbols: string[]): Promise<Quote[]>;
+  /** Daily candles for a market index. Same shape as getHistory, but indices aren't in `stocks`, so no database cache. */
+  getIndexHistory(symbol: string, from: string, to: string): Promise<Candle[]>;
   getFundamentals(symbol: string): Promise<StockFundamentals>;
   /** `from`/`to` are ISO calendar dates ("YYYY-MM-DD") -- deliberately not
    *  Date objects. A date range like this has no time-of-day or timezone
