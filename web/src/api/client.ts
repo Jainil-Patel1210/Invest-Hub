@@ -121,7 +121,28 @@ async function request<T>(path: string, options: RequestOptions = {}, isRetry = 
   return data as T;
 }
 
+/**
+ * Fetches a binary file (e.g. a CSV export) as a Blob. Needs the same auth
+ * and one-shot refresh-on-401 as request(), but can't go through it: that
+ * always parses the response body as JSON.
+ */
+async function download(path: string, isRetry = false): Promise<Blob> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    credentials: "include",
+  });
+
+  if (res.status === 401 && !isRetry && (await refreshAccessToken())) {
+    return download(path, true);
+  }
+  if (!res.ok) {
+    throw new ApiError(res.status, "DOWNLOAD_FAILED", "Download failed");
+  }
+  return res.blob();
+}
+
 export const api = {
+  download,
   get: <T>(path: string) => request<T>(path, { method: "GET" }),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body }),

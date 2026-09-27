@@ -22,7 +22,7 @@ export function MoversList() {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 gap-5">
       <div>
         <h3 className="mb-2 text-xs uppercase tracking-wide text-text-secondary">Gainers</h3>
         <ul className="flex flex-col gap-2">

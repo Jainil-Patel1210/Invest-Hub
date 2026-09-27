@@ -37,7 +37,14 @@ function colorFor(sector: string): string {
   return SECTOR_COLORS[sector] ?? OTHER_COLOR;
 }
 
-export function SectorAllocationChart({ allocation }: { allocation: SectorAllocation[] }) {
+export function SectorAllocationChart({
+  allocation,
+  layout = "row",
+}: {
+  allocation: SectorAllocation[];
+  /** "stack" puts the legend under the donut -- for narrow panels. */
+  layout?: "row" | "stack";
+}) {
   if (allocation.length === 0) {
     return (
       <p className="text-sm text-text-secondary">No holdings to show an allocation for yet.</p>
@@ -51,8 +58,8 @@ export function SectorAllocationChart({ allocation }: { allocation: SectorAlloca
   );
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-      <div className="h-40 w-40 shrink-0">
+    <div className={`flex flex-col gap-4 ${layout === "row" ? "sm:flex-row sm:items-center" : ""}`}>
+      <div className={`h-40 w-40 shrink-0 ${layout === "stack" ? "self-center" : ""}`}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie

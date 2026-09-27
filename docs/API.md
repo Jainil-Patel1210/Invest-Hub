@@ -66,8 +66,14 @@ No body. Invalidates the current refresh token and clears the cookie. → `204`.
 
 Public — no auth required.
 
+### `GET /stocks?limit=60`
+
+The tracked catalog (the seeded Nifty 50, growing as symbols are opened), biggest companies first, each with a live quote from one bulk price call.
+→ `200` `{ "stocks": [{ "symbol", "exchange", "companyName", "sector", "quote": Quote | null }] }` — `quote` is `null` if market data is unavailable; the catalog itself still returns.
+
 ### `GET /stocks/search?q=<query>`
 
+Local-first: prefix match on symbol and substring match on company name against the catalog (so `tc` finds `TCS.NS`), with Yahoo Finance filling in only when there are fewer than 5 local hits. `%` and `_` in the query are literal characters, not wildcards.
 → `200` `{ "results": [{ "symbol": "TCS.NS", "companyName": "...", "exchange": "NSE" }] }`
 
 ### `GET /stocks/:symbol`
@@ -89,6 +95,11 @@ Default range `3M`. Backed by an incremental cache — only the date range not a
 
 ## Market
 
+### `GET /market/indices`
+
+Public. Live NIFTY 50 and SENSEX levels for the header ticker.
+→ `200` `{ "indices": [{ "symbol": "^NSEI", "name": "NIFTY 50", "quote": Quote | null }, ...] }`
+
 ### `GET /market/movers?limit=5` — requires auth
 
 Gainers/losers among stocks **you** hold or watch — not a market-wide index (the stock catalog is a growing cache of what's been looked up, not a fixed universe).
@@ -106,7 +117,28 @@ Price-derived fields are `null` (not a guessed value) if a live quote couldn't b
 
 ### `GET /portfolio/summary`
 
-→ `200` `{ "investedValue", "currentValue", "totalPnl", "totalPnlPct", "dayPnl", "sectorAllocation": [{ "sector", "value", "percentage" }] }`
+→ `200`
+```json
+{
+  "investedValue": 0, "currentValue": 0,
+  "totalPnl": 0, "totalPnlPct": 0,
+  "realizedPnl": 0, "feesPaid": 0,
+  "xirrPct": null,
+  "bestPerformer": { "symbol": "TCS.NS", "pnlPct": 0 },
+  "worstPerformer": { "symbol": "INFY.NS", "pnlPct": 0 },
+  "dayPnl": 0,
+  "sectorAllocation": [{ "sector", "value", "percentage" }]
+}
+```
+
+- `totalPnl` is **unrealized** (current holdings vs cost). `realizedPnl` is profit booked by past sells using weighted-average cost, **before** charges; `feesPaid` reports all charges separately.
+- `xirrPct` is the annualized money-weighted return over every trade plus today's holdings value, or `null` when the trade history spans under 30 days (an annualized figure would be meaningless).
+- `bestPerformer` / `worstPerformer` are `null` when no holding has a live price.
+
+### `GET /portfolio/performance?range=1M|3M|6M|1Y|ALL`
+
+Net worth (cash + holdings at each day's close) over time, with NIFTY 50 rebased to the same starting value. Rebuilt from trade history and daily closes — no snapshots are stored, so back-dated trades are reflected. The series always ends at today's date, carrying the last close forward on weekends and holidays.
+→ `200` `{ "range", "series": [{ "date", "netWorth", "benchmark": number | null }], "changePct": number | null, "benchmarkChangePct": number | null }` — empty `series` for a user with no trades.
 
 ### `GET /portfolio/:symbol`
 
@@ -181,6 +213,15 @@ Buying more of a stock you already hold updates your average cost basis to the q
 
 All filters optional. `from`/`to` are ISO dates. Page size is fixed at 20.
 → `200` `{ "transactions": [Transaction], "page", "pageSize", "total" }`
+
+### `GET /transactions/summary`
+
+Same filters as the list (page is ignored). Totals over **all** matching trades, not just one page.
+→ `200` `{ "count", "buyCount", "sellCount", "turnover", "feesPaid" }`
+
+### `GET /transactions/export`
+
+Same filters. A `text/csv` attachment (`Date,Symbol,Type,Quantity,Price,Fee,Total`), newest first, capped at 5,000 rows. Text fields beginning with `= + - @` are prefixed with `'` so spreadsheets don't execute them as formulas.
 
 `Transaction` shape: `{ "id", "symbol", "type", "quantity", "price", "fee", "total", "executedAt" }`
 

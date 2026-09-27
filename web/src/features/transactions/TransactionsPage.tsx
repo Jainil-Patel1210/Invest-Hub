@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useTransactions } from "../../api/hooks/transactions";
+import { Download } from "lucide-react";
+import { toast } from "sonner";
+import {
+  downloadTransactionsCsv,
+  useTransactions,
+  useTransactionSummary,
+} from "../../api/hooks/transactions";
+import { StatTile } from "../../components/StatTile";
 import { formatINR } from "../../lib/format";
 import { SkeletonList } from "../../components/Skeleton";
 
@@ -11,13 +18,27 @@ export function TransactionsPage() {
   const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useTransactions({
+  const filters = {
     symbol: symbol.trim() || undefined,
     type: type || undefined,
     from: from || undefined,
     to: to || undefined,
-    page,
-  });
+  };
+  const { data, isLoading } = useTransactions({ ...filters, page });
+  const { data: summary } = useTransactionSummary(filters);
+  const [isExporting, setIsExporting] = useState(false);
+
+  async function handleExport() {
+    setIsExporting(true);
+    try {
+      await downloadTransactionsCsv(filters);
+      toast.success("Transactions exported");
+    } catch {
+      toast.error("Couldn't export transactions. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   // Any filter change resets to page 1 -- otherwise narrowing a filter while
   // sitting on page 3 of the old results could land on a page that no
@@ -33,7 +54,63 @@ export function TransactionsPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-2xl font-semibold tracking-tight">Transactions</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="text-xs font-medium uppercase tracking-wider text-text-secondary">
+            Order book
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">Transactions</h1>
+        </div>
+        <button
+          type="button"
+          onClick={() => void handleExport()}
+          disabled={isExporting || !summary || summary.count === 0}
+          className="btn-primary flex items-center gap-2 px-3.5 py-2 text-sm"
+        >
+          <Download size={15} aria-hidden="true" />
+          {isExporting ? "Exporting..." : "Export CSV"}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatTile
+          label="Trades"
+          value={summary ? summary.count : ""}
+          loading={!summary}
+          delta={
+            summary && (
+              <span className="text-xs text-text-secondary">
+                {summary.buyCount} buys · {summary.sellCount} sells
+              </span>
+            )
+          }
+        />
+        <StatTile
+          label="Total traded turnover"
+          value={summary ? formatINR(summary.turnover, 0) : ""}
+          loading={!summary}
+          delta={<span className="text-xs text-text-secondary">Buys and sells combined</span>}
+        />
+        <StatTile
+          label="Charges paid"
+          value={summary ? formatINR(summary.feesPaid, 0) : ""}
+          loading={!summary}
+          delta={
+            summary && summary.count > 0 ? (
+              <span className="text-xs text-text-secondary">
+                {((summary.feesPaid / Math.max(summary.turnover, 1)) * 100).toFixed(3)}% of turnover
+              </span>
+            ) : undefined
+          }
+        />
+        <StatTile
+          label="Average trade size"
+          value={
+            summary && summary.count > 0 ? formatINR(summary.turnover / summary.count, 0) : "—"
+          }
+          loading={!summary}
+        />
+      </div>
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-xs text-text-secondary">
