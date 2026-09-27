@@ -4,6 +4,9 @@ import type { Candle, PricingProvider, Quote, SearchResult, StockFundamentals } 
 
 const QUOTE_TTL_SECONDS = 60;
 const FUNDAMENTALS_TTL_HOURS = 24;
+const SEARCH_LIMIT = 10;
+// Below this many local hits, Yahoo is also asked to fill in.
+const SEARCH_LOCAL_ENOUGH = 5;
 
 // pg returns NUMERIC/DECIMAL columns as strings, not JS numbers -- a JS
 // `number` (IEEE 754 double) can't exactly represent arbitrary-precision
@@ -178,10 +181,20 @@ export class CachedPricingProvider implements PricingProvider {
     }
 
     const quote = await this.inner.getQuote(symbol);
+    await this.storeQuotes([quote]);
+
+    return quote;
+  }
+
+  /** Bulk upsert into quote_cache: one statement for any number of quotes (unnest turns parallel arrays into rows). */
+  private async storeQuotes(quotes: Quote[]): Promise<void> {
+    if (quotes.length === 0) return;
 
     await this.pool.query(
       `INSERT INTO quote_cache (symbol, price, prev_close, day_change, day_change_pct, day_high, day_low, volume, fetched_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
+       SELECT symbol, price, prev_close, day_change, day_change_pct, day_high, day_low, volume, now()
+       FROM unnest($1::text[], $2::numeric[], $3::numeric[], $4::numeric[], $5::numeric[], $6::numeric[], $7::numeric[], $8::bigint[])
+         AS t(symbol, price, prev_close, day_change, day_change_pct, day_high, day_low, volume)
        ON CONFLICT (symbol) DO UPDATE SET
          price = EXCLUDED.price,
          prev_close = EXCLUDED.prev_close,
@@ -192,18 +205,46 @@ export class CachedPricingProvider implements PricingProvider {
          volume = EXCLUDED.volume,
          fetched_at = now()`,
       [
-        symbol,
-        quote.price,
-        quote.prevClose,
-        quote.dayChange,
-        quote.dayChangePct,
-        quote.dayHigh,
-        quote.dayLow,
-        quote.volume,
+        quotes.map((q) => q.symbol),
+        quotes.map((q) => q.price),
+        quotes.map((q) => q.prevClose),
+        quotes.map((q) => q.dayChange),
+        quotes.map((q) => q.dayChangePct),
+        quotes.map((q) => q.dayHigh),
+        quotes.map((q) => q.dayLow),
+        quotes.map((q) => q.volume),
       ],
     );
+  }
 
-    return quote;
+  /**
+   * Bulk quotes: fresh ones come from quote_cache in one query, and every
+   * stale/missing one is fetched from the inner provider in a single batched
+   * call. Only symbols already in `stocks` are considered (quote_cache has a
+   * foreign key to it) -- unknown symbols are omitted, not looked up.
+   */
+  async getQuotes(symbols: string[]): Promise<Quote[]> {
+    if (symbols.length === 0) return [];
+
+    const { rows: freshRows } = await this.pool.query<QuoteRow>(
+      `SELECT * FROM quote_cache
+       WHERE symbol = ANY($1) AND fetched_at > now() - make_interval(secs => $2)`,
+      [symbols, QUOTE_TTL_SECONDS],
+    );
+    const bySymbol = new Map(freshRows.map((row) => [row.symbol, mapQuoteRow(row)]));
+
+    const stale = symbols.filter((s) => !bySymbol.has(s));
+    if (stale.length > 0) {
+      const { rows: known } = await this.pool.query<{ symbol: string }>(
+        "SELECT symbol FROM stocks WHERE symbol = ANY($1)",
+        [stale],
+      );
+      const fetched = await this.inner.getQuotes(known.map((r) => r.symbol));
+      await this.storeQuotes(fetched);
+      for (const q of fetched) bySymbol.set(q.symbol, q);
+    }
+
+    return symbols.flatMap((s) => bySymbol.get(s) ?? []);
   }
 
   async getHistory(symbol: string, from: string, to: string): Promise<Candle[]> {
@@ -286,10 +327,57 @@ export class CachedPricingProvider implements PricingProvider {
     );
   }
 
-  // Search results aren't cached: they're cheap, ad-hoc, and only relevant
-  // for the moment the user is typing, so there's no stale-data question to
-  // answer here in the first place.
-  search(query: string): Promise<SearchResult[]> {
-    return this.inner.search(query);
+  /**
+   * Local-first search. Yahoo's search endpoint is built for exact-ish
+   * queries: "tc" finds nothing useful, "TCS.NS" works. So the `stocks`
+   * table (the seeded Nifty 50, growing with every symbol anyone opens)
+   * answers first, with as-you-type prefix matching on the symbol and
+   * substring matching on the company name. Yahoo is only consulted to fill
+   * in when the local catalog has few hits, so a stock nobody has opened yet
+   * is still findable -- and a Yahoo outage just means local results only.
+   */
+  async search(query: string): Promise<SearchResult[]> {
+    // LIKE treats % and _ as wildcards; escape them so a query like "a_b"
+    // means those literal characters.
+    const escaped = query.replace(/[\\%_]/g, (c) => `\\${c}`);
+
+    const { rows } = await this.pool.query<{
+      symbol: string;
+      exchange: "NSE" | "BSE";
+      company_name: string;
+    }>(
+      `SELECT symbol, exchange, company_name FROM stocks
+       WHERE symbol ILIKE $1 || '%' OR company_name ILIKE '%' || $1 || '%'
+       ORDER BY
+         CASE
+           WHEN upper(symbol) = upper($2) OR upper(symbol) = upper($2) || '.NS' THEN 0
+           WHEN symbol ILIKE $1 || '%' THEN 1
+           WHEN company_name ILIKE $1 || '%' THEN 2
+           ELSE 3
+         END,
+         market_cap DESC NULLS LAST,
+         symbol
+       LIMIT $3`,
+      [escaped, query, SEARCH_LIMIT],
+    );
+
+    const results: SearchResult[] = rows.map((r) => ({
+      symbol: r.symbol,
+      companyName: r.company_name,
+      exchange: r.exchange,
+    }));
+
+    if (results.length >= SEARCH_LOCAL_ENOUGH) return results;
+
+    try {
+      const remote = await this.inner.search(query);
+      const seen = new Set(results.map((r) => r.symbol));
+      for (const r of remote) {
+        if (!seen.has(r.symbol)) results.push(r);
+      }
+    } catch {
+      // Local results are still a valid answer; don't fail the search over the fallback.
+    }
+    return results.slice(0, SEARCH_LIMIT);
   }
 }

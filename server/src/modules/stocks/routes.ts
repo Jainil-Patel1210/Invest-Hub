@@ -2,10 +2,23 @@ import { Router } from "express";
 import { getParam } from "../../lib/httpParams";
 import { pricingProvider } from "../../lib/pricing";
 import { validateQuery } from "../../middleware/validate";
-import { historyQuerySchema, searchQuerySchema, type HistoryRange } from "./schema";
-import { rangeToDates } from "./service";
+import {
+  catalogQuerySchema,
+  historyQuerySchema,
+  searchQuerySchema,
+  type HistoryRange,
+} from "./schema";
+import { getCatalog, rangeToDates } from "./service";
 
 const router = Router();
+
+// Browse view: the tracked catalog with live quotes. Registered before
+// "/:symbol" so it isn't captured by it (same ordering rule as /search).
+router.get("/", validateQuery(catalogQuerySchema), async (_req, res) => {
+  const { limit } = res.locals.query as { limit: number };
+  const stocks = await getCatalog(limit);
+  res.json({ stocks });
+});
 
 router.get("/search", validateQuery(searchQuerySchema), async (_req, res) => {
   // `as` cast, not a type-check: res.locals is typed as `Record<string, any>`

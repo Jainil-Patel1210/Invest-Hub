@@ -38,6 +38,36 @@ function isNotFoundError(err: unknown): boolean {
   return err instanceof Error && /quote not found|no data found|delisted/i.test(err.message);
 }
 
+/** The subset of yahoo-finance2's quote object that a Quote is built from. */
+interface RawQuote {
+  symbol?: string;
+  regularMarketPrice?: number;
+  regularMarketPreviousClose?: number;
+  regularMarketChange?: number;
+  regularMarketChangePercent?: number;
+  regularMarketDayHigh?: number;
+  regularMarketDayLow?: number;
+  regularMarketVolume?: number;
+}
+
+/** Returns null when Yahoo sent a quote without the two fields a Quote can't do without. */
+function toQuote(symbol: string, q: RawQuote): Quote | null {
+  if (q.regularMarketPrice == null || q.regularMarketPreviousClose == null) return null;
+
+  return {
+    symbol,
+    price: q.regularMarketPrice,
+    prevClose: q.regularMarketPreviousClose,
+    dayChange: q.regularMarketChange ?? q.regularMarketPrice - q.regularMarketPreviousClose,
+    dayChangePct:
+      q.regularMarketChangePercent ??
+      ((q.regularMarketPrice - q.regularMarketPreviousClose) / q.regularMarketPreviousClose) * 100,
+    dayHigh: q.regularMarketDayHigh ?? null,
+    dayLow: q.regularMarketDayLow ?? null,
+    volume: q.regularMarketVolume ?? null,
+  };
+}
+
 export class YahooPricingProvider implements PricingProvider {
   async getQuote(symbol: string): Promise<Quote> {
     // Confirmed directly: quote() resolves to `undefined` for an unknown
@@ -45,23 +75,25 @@ export class YahooPricingProvider implements PricingProvider {
     // alongside the two below. `!q` must be checked before touching any
     // field on it.
     const q = await yahooFinance.quote(symbol);
-    if (!q || q.regularMarketPrice == null || q.regularMarketPreviousClose == null) {
-      throw new SymbolNotFoundError(symbol);
-    }
+    const quote = q ? toQuote(symbol, q as RawQuote) : null;
+    if (!quote) throw new SymbolNotFoundError(symbol);
+    return quote;
+  }
 
-    return {
-      symbol,
-      price: q.regularMarketPrice,
-      prevClose: q.regularMarketPreviousClose,
-      dayChange: q.regularMarketChange ?? q.regularMarketPrice - q.regularMarketPreviousClose,
-      dayChangePct:
-        q.regularMarketChangePercent ??
-        ((q.regularMarketPrice - q.regularMarketPreviousClose) / q.regularMarketPreviousClose) *
-          100,
-      dayHigh: q.regularMarketDayHigh ?? null,
-      dayLow: q.regularMarketDayLow ?? null,
-      volume: q.regularMarketVolume ?? null,
-    };
+  async getQuotes(symbols: string[]): Promise<Quote[]> {
+    if (symbols.length === 0) return [];
+
+    // Passing an array makes yahoo-finance2 issue a single HTTP request for
+    // the whole batch (instead of N), and unknown symbols are simply absent
+    // from the result array rather than throwing.
+    const results = await yahooFinance.quote(symbols);
+
+    const quotes: Quote[] = [];
+    for (const q of results) {
+      const quote = toQuote(q.symbol, q as RawQuote);
+      if (quote) quotes.push(quote);
+    }
+    return quotes;
   }
 
   async getFundamentals(symbol: string): Promise<StockFundamentals> {

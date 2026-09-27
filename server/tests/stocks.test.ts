@@ -15,6 +15,38 @@ describe("stocks", () => {
     expect(res.body.results.some((r: { symbol: string }) => r.symbol === "INFY.NS")).toBe(true);
   });
 
+  it("finds a stock from a partial symbol prefix", async () => {
+    const res = await request(app).get("/api/stocks/search").query({ q: "tc" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.results[0].symbol).toBe("TCS.NS");
+  });
+
+  it("finds a stock from a partial company name", async () => {
+    const res = await request(app).get("/api/stocks/search").query({ q: "reliance" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.results.some((r: { symbol: string }) => r.symbol === "RELIANCE.NS")).toBe(true);
+  });
+
+  it("treats % in a search as a literal character, not a wildcard", async () => {
+    const res = await request(app).get("/api/stocks/search").query({ q: "%" });
+
+    expect(res.status).toBe(200);
+    // A wildcard would match the whole catalog; a literal % matches nothing local.
+    expect(res.body.results.length).toBeLessThan(10);
+  });
+
+  it("lists the catalog with live quotes", async () => {
+    const res = await request(app).get("/api/stocks").query({ limit: 10 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.stocks).toHaveLength(10);
+    const withQuote = res.body.stocks.filter((s: { quote: unknown }) => s.quote !== null);
+    expect(withQuote.length).toBeGreaterThan(0);
+    expect(withQuote[0].quote.price).toBeGreaterThan(0);
+  });
+
   it("rejects a search with no query", async () => {
     const res = await request(app).get("/api/stocks/search");
     expect(res.status).toBe(400);

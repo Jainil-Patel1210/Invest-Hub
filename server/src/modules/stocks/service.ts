@@ -1,4 +1,7 @@
 import { addDaysIso } from "../../lib/pricing/dateUtils";
+import { pricingProvider } from "../../lib/pricing";
+import type { Quote } from "../../lib/pricing/types";
+import * as repo from "./repo";
 import type { HistoryRange } from "./schema";
 
 const RANGE_TO_DAYS: Record<Exclude<HistoryRange, "ALL">, number> = {
@@ -25,4 +28,24 @@ export function rangeToDates(range: HistoryRange): { from: string; to: string } 
   const to = todayIso();
   const days = range === "ALL" ? ALL_RANGE_DAYS : RANGE_TO_DAYS[range];
   return { from: addDaysIso(to, -days), to };
+}
+
+export interface CatalogStock extends repo.CatalogRow {
+  quote: Quote | null;
+}
+
+/**
+ * The catalog with a live quote on each row. Quotes come from one bulk call;
+ * if the market-data source is down, the catalog is still returned (quote
+ * null) rather than the whole page failing over price data.
+ */
+export async function getCatalog(limit: number): Promise<CatalogStock[]> {
+  const rows = await repo.listCatalog(limit);
+
+  const quotes = await pricingProvider
+    .getQuotes(rows.map((r) => r.symbol))
+    .catch(() => [] as Quote[]);
+  const bySymbol = new Map(quotes.map((q) => [q.symbol, q]));
+
+  return rows.map((r) => ({ ...r, quote: bySymbol.get(r.symbol) ?? null }));
 }

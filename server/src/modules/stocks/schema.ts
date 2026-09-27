@@ -10,3 +10,7 @@ export type HistoryRange = (typeof HISTORY_RANGES)[number];
 export const historyQuerySchema = z.object({
   range: z.enum(HISTORY_RANGES).default("3M"),
 });
+
+export const catalogQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(60),
+});

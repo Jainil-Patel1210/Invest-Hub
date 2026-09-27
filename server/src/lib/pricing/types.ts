@@ -48,6 +48,9 @@ export interface SearchResult {
  */
 export interface PricingProvider {
   getQuote(symbol: string): Promise<Quote>;
+  /** Bulk variant of getQuote: one round trip for many symbols. Symbols the
+   *  source can't price are silently omitted rather than failing the batch. */
+  getQuotes(symbols: string[]): Promise<Quote[]>;
   getFundamentals(symbol: string): Promise<StockFundamentals>;
   /** `from`/`to` are ISO calendar dates ("YYYY-MM-DD") -- deliberately not
    *  Date objects. A date range like this has no time-of-day or timezone
