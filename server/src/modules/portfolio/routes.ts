@@ -33,6 +33,12 @@ router.get("/performance", validateQuery(performanceQuerySchema), async (req, re
   res.json(performance);
 });
 
+router.get("/analytics", validateQuery(performanceQuerySchema), async (req, res) => {
+  const { range } = res.locals.query as { range: HistoryRange };
+  const analytics = await service.getAnalytics(req.userId!, range);
+  res.json(analytics);
+});
+
 router.get("/:symbol", async (req, res) => {
   const detail = await service.getHoldingDetail(req.userId!, getParam(req, "symbol"));
   res.json(detail);

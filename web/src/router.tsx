@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/layout/AppShell";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { AccountPage } from "./features/account/AccountPage";
+import { AnalyticsPage } from "./features/analytics/AnalyticsPage";
 import { LoginPage } from "./features/auth/LoginPage";
 import { RegisterPage } from "./features/auth/RegisterPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
@@ -32,6 +33,7 @@ export function AppRouter() {
           <Route path="stocks" element={<StocksPage />} />
           <Route path="stocks/:symbol" element={<StockDetailPage />} />
           <Route path="transactions" element={<TransactionsPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="account" element={<AccountPage />} />
         </Route>
       </Route>

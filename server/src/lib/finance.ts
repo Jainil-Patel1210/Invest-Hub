@@ -230,3 +230,169 @@ export function buildEquityCurve(
 
   return points;
 }
+
+// ---------------------------------------------------------------------------
+// Risk statistics
+// ---------------------------------------------------------------------------
+
+// Trading days per year, for annualizing a daily statistic -- the
+// conventional value (NSE trades roughly this many days), not a fitted or
+// fabricated number.
+const TRADING_DAYS_PER_YEAR = 252;
+
+/** Day-over-day percentage change, as fractions (0.01 = 1%). One shorter than `values`. */
+export function dailyReturns(values: number[]): number[] {
+  const returns: number[] = [];
+  for (let i = 1; i < values.length; i++) {
+    const prev = values[i - 1]!;
+    if (prev !== 0) returns.push((values[i]! - prev) / prev);
+  }
+  return returns;
+}
+
+function mean(values: number[]): number {
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
+/** Sample standard deviation (n-1 divisor) -- null below 2 points, where "spread" isn't defined. */
+export function stdev(values: number[]): number | null {
+  if (values.length < 2) return null;
+  const m = mean(values);
+  const variance = values.reduce((sum, v) => sum + (v - m) ** 2, 0) / (values.length - 1);
+  return Math.sqrt(variance);
+}
+
+/** Annualized volatility (%) of a daily return series. */
+export function annualizedVolatilityPct(returns: number[]): number | null {
+  const daily = stdev(returns);
+  return daily === null ? null : daily * Math.sqrt(TRADING_DAYS_PER_YEAR) * 100;
+}
+
+/**
+ * Largest peak-to-trough decline (%) in a value series -- the worst drop an
+ * investor sitting through the whole period would have actually felt,
+ * regardless of where the series ends up.
+ */
+export function maxDrawdownPct(values: number[]): number | null {
+  if (values.length < 2) return null;
+  let peak = values[0]!;
+  let worst = 0;
+  for (const v of values) {
+    if (v > peak) peak = v;
+    if (peak > 0) worst = Math.min(worst, (v - peak) / peak);
+  }
+  return worst * 100;
+}
+
+/**
+ * Beta vs a benchmark: covariance(portfolio, benchmark) / variance(benchmark).
+ * >1 means the portfolio swings more than the benchmark, <1 less. Null when
+ * there's too little paired data or the benchmark never moved (variance 0).
+ */
+export function beta(portfolioReturns: number[], benchmarkReturns: number[]): number | null {
+  const n = Math.min(portfolioReturns.length, benchmarkReturns.length);
+  if (n < 2) return null;
+
+  const p = portfolioReturns.slice(0, n);
+  const b = benchmarkReturns.slice(0, n);
+  const meanP = mean(p);
+  const meanB = mean(b);
+
+  let covariance = 0;
+  let varianceB = 0;
+  for (let i = 0; i < n; i++) {
+    covariance += (p[i]! - meanP) * (b[i]! - meanB);
+    varianceB += (b[i]! - meanB) ** 2;
+  }
+  if (varianceB === 0) return null;
+  return covariance / varianceB;
+}
+
+/**
+ * Annualized Sharpe ratio, assuming a 0% risk-free rate (disclosed to the
+ * caller rather than silently baked in -- a real risk-free rate is a live
+ * external number this app doesn't source, and pretending otherwise would be
+ * worse than stating the simplification plainly). Null when volatility is 0
+ * (nothing to divide by) or there's too little data.
+ */
+export function sharpeRatio(returns: number[]): number | null {
+  const dailyStdev = stdev(returns);
+  if (dailyStdev === null || dailyStdev === 0) return null;
+  const annualizedReturn = mean(returns) * TRADING_DAYS_PER_YEAR;
+  const annualizedStdev = dailyStdev * Math.sqrt(TRADING_DAYS_PER_YEAR);
+  return annualizedReturn / annualizedStdev;
+}
+
+// ---------------------------------------------------------------------------
+// Trade outcomes (win rate, profit factor)
+// ---------------------------------------------------------------------------
+
+export interface TradeOutcome {
+  date: string;
+  symbol: string;
+  /** Realized P&L for this specific sale, before charges (see realizedPnl). */
+  pnl: number;
+}
+
+/**
+ * Same weighted-average-cost replay as realizedPnl, but returns one entry per
+ * SELL instead of a single total -- the per-trade detail win rate and
+ * profit factor need.
+ */
+export function tradeOutcomes(trades: Trade[]): TradeOutcome[] {
+  const positions = new Map<string, { quantity: number; avgCost: number }>();
+  const outcomes: TradeOutcome[] = [];
+
+  for (const t of sortTrades(trades)) {
+    const pos = positions.get(t.symbol) ?? { quantity: 0, avgCost: 0 };
+
+    if (t.type === "BUY") {
+      const newQuantity = pos.quantity + t.quantity;
+      pos.avgCost = (pos.quantity * pos.avgCost + t.quantity * t.price) / newQuantity;
+      pos.quantity = newQuantity;
+    } else {
+      const sold = Math.min(t.quantity, pos.quantity);
+      if (sold > 0) {
+        outcomes.push({ date: t.date, symbol: t.symbol, pnl: (t.price - pos.avgCost) * sold });
+      }
+      pos.quantity -= sold;
+    }
+    positions.set(t.symbol, pos);
+  }
+
+  return outcomes;
+}
+
+export interface TradeStats {
+  totalClosedTrades: number;
+  winRatePct: number | null;
+  /** Gross profit / gross loss magnitude. Null with no losing trades (nothing to divide by) or no trades at all. */
+  profitFactor: number | null;
+  avgWin: number | null;
+  avgLoss: number | null;
+}
+
+export function summarizeTradeOutcomes(outcomes: TradeOutcome[]): TradeStats {
+  if (outcomes.length === 0) {
+    return {
+      totalClosedTrades: 0,
+      winRatePct: null,
+      profitFactor: null,
+      avgWin: null,
+      avgLoss: null,
+    };
+  }
+
+  const wins = outcomes.filter((o) => o.pnl > 0);
+  const losses = outcomes.filter((o) => o.pnl < 0);
+  const grossProfit = wins.reduce((sum, o) => sum + o.pnl, 0);
+  const grossLoss = Math.abs(losses.reduce((sum, o) => sum + o.pnl, 0));
+
+  return {
+    totalClosedTrades: outcomes.length,
+    winRatePct: (wins.length / outcomes.length) * 100,
+    profitFactor: grossLoss > 0 ? grossProfit / grossLoss : null,
+    avgWin: wins.length > 0 ? grossProfit / wins.length : null,
+    avgLoss: losses.length > 0 ? grossLoss / losses.length : null,
+  };
+}

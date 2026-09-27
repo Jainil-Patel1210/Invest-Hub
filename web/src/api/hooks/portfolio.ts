@@ -92,3 +92,30 @@ export function usePortfolioDetail(symbol: string) {
       ),
   });
 }
+
+export interface TradeStats {
+  totalClosedTrades: number;
+  winRatePct: number | null;
+  profitFactor: number | null;
+  avgWin: number | null;
+  avgLoss: number | null;
+}
+
+export interface Analytics {
+  range: PerformanceRange;
+  returnPct: number | null;
+  benchmarkReturnPct: number | null;
+  volatilityPct: number | null;
+  maxDrawdownPct: number | null;
+  beta: number | null;
+  sharpeRatio: number | null;
+  tradeStats: TradeStats;
+}
+
+export function useAnalytics(range: PerformanceRange) {
+  return useQuery({
+    queryKey: ["portfolio", "analytics", range],
+    queryFn: () => api.get<Analytics>(`/portfolio/analytics?range=${range}`),
+    staleTime: 60_000,
+  });
+}

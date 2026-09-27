@@ -117,3 +117,84 @@ describe("portfolio performance & metrics", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("portfolio analytics", () => {
+  const email = `analytics-test-${Date.now()}@example.com`;
+  let accessToken: string;
+  let userId: number;
+  const auth = () => ({ Authorization: `Bearer ${accessToken}` });
+
+  beforeAll(async () => {
+    const reg = await request(app)
+      .post("/api/auth/register")
+      .send({ email, password: "password123", fullName: "Analytics Test" });
+    accessToken = reg.body.accessToken;
+    userId = reg.body.user.id;
+
+    await request(app)
+      .post("/api/trade/buy")
+      .set(auth())
+      .send({ symbol: "TCS.NS", quantity: 10, price: 2000, executedAt: daysAgoIso(60) });
+    await request(app)
+      .post("/api/trade/sell")
+      .set(auth())
+      .send({ symbol: "TCS.NS", quantity: 4, price: 2100, executedAt: daysAgoIso(30) });
+    await request(app)
+      .post("/api/trade/sell")
+      .set(auth())
+      .send({ symbol: "TCS.NS", quantity: 3, price: 1900, executedAt: daysAgoIso(10) });
+  });
+
+  afterAll(async () => {
+    await pool.query("DELETE FROM users WHERE id = $1", [userId]);
+  });
+
+  it("reports risk statistics and all-time win rate", async () => {
+    const res = await request(app)
+      .get("/api/portfolio/analytics")
+      .query({ range: "3M" })
+      .set(auth());
+
+    expect(res.status).toBe(200);
+    const body = res.body as {
+      returnPct: number | null;
+      volatilityPct: number | null;
+      maxDrawdownPct: number | null;
+      beta: number | null;
+      sharpeRatio: number | null;
+      tradeStats: {
+        totalClosedTrades: number;
+        winRatePct: number | null;
+        profitFactor: number | null;
+        avgWin: number | null;
+        avgLoss: number | null;
+      };
+    };
+
+    expect(body.returnPct).toEqual(expect.any(Number));
+    expect(body.volatilityPct).not.toBeNull();
+    expect(body.volatilityPct!).toBeGreaterThanOrEqual(0);
+    expect(body.maxDrawdownPct).not.toBeNull();
+    expect(body.maxDrawdownPct!).toBeLessThanOrEqual(0);
+    expect(body.beta).not.toBeNull();
+
+    // One winning sell (2100 > cost) and one losing sell (1900 < cost).
+    expect(body.tradeStats.totalClosedTrades).toBe(2);
+    expect(body.tradeStats.winRatePct).toBeCloseTo(50, 6);
+    expect(body.tradeStats.avgWin).toBeGreaterThan(0);
+    expect(body.tradeStats.avgLoss).toBeGreaterThan(0);
+  });
+
+  it("rejects an unknown range", async () => {
+    const res = await request(app)
+      .get("/api/portfolio/analytics")
+      .query({ range: "10Y" })
+      .set(auth());
+    expect(res.status).toBe(400);
+  });
+
+  it("requires authentication", async () => {
+    const res = await request(app).get("/api/portfolio/analytics");
+    expect(res.status).toBe(401);
+  });
+});

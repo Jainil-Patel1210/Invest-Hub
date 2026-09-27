@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  annualizedVolatilityPct,
+  beta,
   buildEquityCurve,
+  dailyReturns,
+  maxDrawdownPct,
   realizedPnl,
+  sharpeRatio,
+  stdev,
   sumFees,
+  summarizeTradeOutcomes,
+  tradeOutcomes,
   xirr,
   xirrFlows,
   type CloseLookup,
@@ -201,5 +209,123 @@ describe("buildEquityCurve", () => {
     // cash = 10000 - 1020 + 1080 = 10060, nothing held
     expect(curve[1]!.netWorth).toBe(10_060);
     expect(curve[3]!.netWorth).toBe(10_060);
+  });
+});
+
+describe("dailyReturns", () => {
+  it("computes day-over-day fractional change", () => {
+    expect(dailyReturns([100, 110, 99])).toEqual([0.1, -0.1]);
+  });
+
+  it("returns nothing for fewer than two values", () => {
+    expect(dailyReturns([100])).toEqual([]);
+  });
+});
+
+describe("stdev", () => {
+  it("is null with fewer than two values", () => {
+    expect(stdev([1])).toBeNull();
+  });
+
+  it("matches a hand-computed sample standard deviation", () => {
+    // mean 5, squared deviations [4,1,0,1,4] sum 10, /3 = 3.333, sqrt ~1.8257
+    expect(stdev([3, 4, 5, 6, 7])).toBeCloseTo(1.5811, 3);
+  });
+});
+
+describe("annualizedVolatilityPct", () => {
+  it("scales daily stdev by sqrt(252) and converts to percent", () => {
+    const returns = [0.01, -0.01, 0.02, -0.02, 0.01];
+    const vol = annualizedVolatilityPct(returns);
+    expect(vol).toBeCloseTo(stdev(returns)! * Math.sqrt(252) * 100, 6);
+  });
+
+  it("is null with too little data", () => {
+    expect(annualizedVolatilityPct([0.01])).toBeNull();
+  });
+});
+
+describe("maxDrawdownPct", () => {
+  it("is zero for a monotonically rising series", () => {
+    expect(maxDrawdownPct([100, 110, 120])).toBe(0);
+  });
+
+  it("finds the largest peak-to-trough decline, not just the last drop", () => {
+    // Peak 120 -> trough 90 is a steeper drop than the later 110 -> 100.
+    const dd = maxDrawdownPct([100, 120, 90, 110, 100]);
+    expect(dd).toBeCloseTo(((90 - 120) / 120) * 100, 6);
+  });
+
+  it("is null with fewer than two values", () => {
+    expect(maxDrawdownPct([100])).toBeNull();
+  });
+});
+
+describe("beta", () => {
+  it("is 1 when the portfolio moves exactly like the benchmark", () => {
+    const returns = [0.01, -0.02, 0.03, 0.0, -0.01];
+    expect(beta(returns, returns)!).toBeCloseTo(1, 6);
+  });
+
+  it("is 2 when the portfolio moves twice as much as the benchmark", () => {
+    const benchmarkReturns = [0.01, -0.02, 0.03, 0.0, -0.01];
+    const portfolioReturns = benchmarkReturns.map((r) => r * 2);
+    expect(beta(portfolioReturns, benchmarkReturns)!).toBeCloseTo(2, 6);
+  });
+
+  it("is null when the benchmark never moves", () => {
+    expect(beta([0.01, 0.02, -0.01], [0, 0, 0])).toBeNull();
+  });
+});
+
+describe("sharpeRatio", () => {
+  it("is positive for a steadily positive return series", () => {
+    expect(sharpeRatio([0.001, 0.002, 0.0015, 0.0018])!).toBeGreaterThan(0);
+  });
+
+  it("is null when volatility is zero", () => {
+    expect(sharpeRatio([0.001, 0.001, 0.001])).toBeNull();
+  });
+});
+
+describe("tradeOutcomes / summarizeTradeOutcomes", () => {
+  it("produces one outcome per sell, using weighted-average cost", () => {
+    const outcomes = tradeOutcomes([
+      trade("2025-01-01", "BUY", 10, 100),
+      trade("2025-01-02", "SELL", 5, 120),
+      trade("2025-01-03", "SELL", 5, 90),
+    ]);
+    expect(outcomes).toEqual([
+      { date: "2025-01-02", symbol: "TCS.NS", pnl: 100 },
+      { date: "2025-01-03", symbol: "TCS.NS", pnl: -50 },
+    ]);
+  });
+
+  it("summarizes win rate, profit factor, and average win/loss", () => {
+    const stats = summarizeTradeOutcomes([
+      { date: "d", symbol: "A", pnl: 100 },
+      { date: "d", symbol: "A", pnl: 200 },
+      { date: "d", symbol: "A", pnl: -50 },
+    ]);
+    expect(stats.totalClosedTrades).toBe(3);
+    expect(stats.winRatePct).toBeCloseTo((2 / 3) * 100, 6);
+    expect(stats.profitFactor).toBeCloseTo(300 / 50, 6);
+    expect(stats.avgWin).toBe(150);
+    expect(stats.avgLoss).toBe(50);
+  });
+
+  it("reports a null profit factor rather than Infinity when there are no losses", () => {
+    const stats = summarizeTradeOutcomes([{ date: "d", symbol: "A", pnl: 100 }]);
+    expect(stats.profitFactor).toBeNull();
+  });
+
+  it("returns all-null stats for no closed trades", () => {
+    expect(summarizeTradeOutcomes([])).toEqual({
+      totalClosedTrades: 0,
+      winRatePct: null,
+      profitFactor: null,
+      avgWin: null,
+      avgLoss: null,
+    });
   });
 });

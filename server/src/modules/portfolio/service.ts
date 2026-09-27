@@ -1,12 +1,20 @@
 import { Errors } from "../../lib/errors";
 import {
+  annualizedVolatilityPct,
+  beta,
   buildEquityCurve,
+  dailyReturns,
+  maxDrawdownPct,
   realizedPnl,
+  sharpeRatio,
   sumFees,
+  summarizeTradeOutcomes,
+  tradeOutcomes,
   xirr,
   xirrFlows,
   type CloseLookup,
   type Trade,
+  type TradeStats,
 } from "../../lib/finance";
 import { addDaysIso } from "../../lib/pricing/dateUtils";
 import type { HistoryRange } from "../stocks/schema";
@@ -221,6 +229,56 @@ const LEAD_IN_DAYS = 10;
  * portfolio snapshots are stored, so it is always consistent with the trades
  * on record, including back-dated ones.
  */
+export interface Analytics {
+  range: HistoryRange;
+  /** Return over the selected range, as percentages -- not annualized (see xirrPct on the summary for that). */
+  returnPct: number | null;
+  benchmarkReturnPct: number | null;
+  /** Annualized standard deviation of daily returns, as a percentage. */
+  volatilityPct: number | null;
+  /** Largest peak-to-trough decline within the range, as a percentage (always <= 0). */
+  maxDrawdownPct: number | null;
+  /** Portfolio sensitivity to NIFTY 50 moves over the range (1 = moves with it, >1 = more volatile). */
+  beta: number | null;
+  /** Annualized Sharpe ratio, assuming a 0% risk-free rate (disclosed, not fetched from a live source). */
+  sharpeRatio: number | null;
+  /** Win rate / profit factor over every closed (sold) trade ever made -- not scoped to `range`, since a range with no sells would otherwise report misleadingly empty stats. */
+  tradeStats: TradeStats;
+}
+
+/**
+ * Risk and trade-quality statistics, built on top of getPerformance's daily
+ * net-worth curve -- no separate data fetch, just different math over the
+ * same series.
+ */
+export async function getAnalytics(userId: number, range: HistoryRange): Promise<Analytics> {
+  const [performance, tradeRows] = await Promise.all([
+    getPerformance(userId, range),
+    repo.getAllTrades(userId),
+  ]);
+
+  const netWorths = performance.series.map((p) => p.netWorth);
+  const benchmarks = performance.series
+    .filter((p) => p.benchmark !== null)
+    .map((p) => p.benchmark!);
+
+  const portfolioReturns = dailyReturns(netWorths);
+  const benchmarkReturns = dailyReturns(benchmarks);
+
+  const outcomes = tradeOutcomes(tradeRows.map(toTrade));
+
+  return {
+    range,
+    returnPct: performance.changePct,
+    benchmarkReturnPct: performance.benchmarkChangePct,
+    volatilityPct: annualizedVolatilityPct(portfolioReturns),
+    maxDrawdownPct: maxDrawdownPct(netWorths),
+    beta: benchmarks.length === netWorths.length ? beta(portfolioReturns, benchmarkReturns) : null,
+    sharpeRatio: sharpeRatio(portfolioReturns),
+    tradeStats: summarizeTradeOutcomes(outcomes),
+  };
+}
+
 export async function getPerformance(userId: number, range: HistoryRange): Promise<Performance> {
   const tradeRows = await repo.getAllTrades(userId);
   if (tradeRows.length === 0) {

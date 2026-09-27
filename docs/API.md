@@ -140,6 +140,25 @@ Price-derived fields are `null` (not a guessed value) if a live quote couldn't b
 Net worth (cash + holdings at each day's close) over time, with NIFTY 50 rebased to the same starting value. Rebuilt from trade history and daily closes — no snapshots are stored, so back-dated trades are reflected. The series always ends at today's date, carrying the last close forward on weekends and holidays.
 → `200` `{ "range", "series": [{ "date", "netWorth", "benchmark": number | null }], "changePct": number | null, "benchmarkChangePct": number | null }` — empty `series` for a user with no trades.
 
+### `GET /portfolio/analytics?range=1M|3M|6M|1Y|ALL`
+
+Risk and trade-quality statistics, built from the same daily net-worth curve `/portfolio/performance` computes.
+→ `200`
+```json
+{
+  "range": "3M",
+  "returnPct": -0.38, "benchmarkReturnPct": -3.79,
+  "volatilityPct": 0.73, "maxDrawdownPct": -0.41,
+  "beta": 0.02, "sharpeRatio": -2.47,
+  "tradeStats": { "totalClosedTrades": 1, "winRatePct": 100, "profitFactor": null, "avgWin": 300, "avgLoss": null }
+}
+```
+
+- `returnPct` / `benchmarkReturnPct`: plain (not annualized) return over the selected range — see `xirrPct` on `/portfolio/summary` for an annualized figure.
+- `volatilityPct`: annualized standard deviation of daily returns. `maxDrawdownPct`: largest peak-to-trough decline within the range (always ≤ 0). `beta`: sensitivity to NIFTY 50 (1 = moves with it). `sharpeRatio`: annualized, assuming a 0% risk-free rate — this is a stated simplification, not a live rate.
+- `tradeStats` covers every closed (sold) trade **ever made**, not just the selected range, so a quiet range doesn't misleadingly report empty stats. `profitFactor`/`avgLoss` are `null` rather than `Infinity` when there are no losing trades yet.
+- Any field that isn't computable yet (too little history, no closed trades) is `null`, never a guessed value.
+
 ### `GET /portfolio/:symbol`
 
 → `200` `{ "holding": <same shape as one item above>, "transactions": [Transaction] }` · `404 NOT_FOUND` if you don't hold it.

@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Eye,
   LayoutDashboard,
   Menu,
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { to: "/watchlist", label: "Watchlist", icon: Eye },
   { to: "/stocks", label: "Stocks", icon: TrendingUp },
   { to: "/transactions", label: "Transactions", icon: Receipt },
+  { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/account", label: "Account", icon: Settings },
 ];
 
