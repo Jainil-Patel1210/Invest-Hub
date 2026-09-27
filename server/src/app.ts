@@ -13,6 +13,10 @@ import watchlistRoutes from "./modules/watchlist/routes";
 
 const app = express();
 
+// In production the app sits behind the host's TLS-terminating proxy, so
+// Express must trust one hop for req.protocol / req.ip to reflect the client.
+app.set("trust proxy", 1);
+
 app.use(
   cors({
     // A cookie-based refresh token only crosses origins if the server
