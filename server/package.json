@@ -12,6 +12,7 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seedNifty50.ts",
     "db:seed:demo": "tsx src/db/seedDemoUser.ts",
+    "db:seed:demo:reset": "tsx src/db/resetDemoUser.ts",
     "test": "vitest run"
   },
   "dependencies": {

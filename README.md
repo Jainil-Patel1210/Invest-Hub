@@ -61,7 +61,8 @@ cp .env.example server/.env    # then fill in real values -- see below
 pnpm db:up                     # starts Postgres in Docker
 pnpm db:migrate                # applies db/schema.sql
 pnpm db:seed                   # seeds ~50 real Nifty-50 stocks with live fundamentals
-pnpm db:seed:demo              # optional: creates demo@investhub.local / demo1234 with sample holdings + a watchlist
+pnpm db:seed:demo              # optional: creates demo@investhub.local / demo1234 with a couple of holdings + a watchlist
+pnpm db:seed:demo:reset        # optional: replaces it with a richer ~5-month trade history for showing off the equity curve, sector mix, and analytics -- safe to re-run any time, only ever touches this one account
 
 pnpm dev:server                # API on :4000
 pnpm dev:web                   # frontend on :5173, in a second terminal

@@ -9,6 +9,7 @@
     "db:migrate": "pnpm --filter @investhub/server db:migrate",
     "db:seed": "pnpm --filter @investhub/server db:seed",
     "db:seed:demo": "pnpm --filter @investhub/server db:seed:demo",
+    "db:seed:demo:reset": "pnpm --filter @investhub/server db:seed:demo:reset",
     "test": "pnpm --filter @investhub/server test",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
