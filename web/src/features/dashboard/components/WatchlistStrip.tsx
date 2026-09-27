@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useWatchlistDetail, useWatchlists } from "../../../api/hooks/watchlists";
 import { Delta } from "../../../components/Delta";
 import { formatINR } from "../../../lib/format";
+import { SkeletonList } from "../../../components/Skeleton";
 
 /** Shows the user's first watchlist as a compact strip -- the full tabbed view with every watchlist lives on the dedicated /watchlist page. */
 export function WatchlistStrip() {
@@ -13,7 +14,7 @@ export function WatchlistStrip() {
     isError: detailError,
   } = useWatchlistDetail(firstId);
 
-  if (listLoading) return <p className="text-sm text-text-secondary">Loading...</p>;
+  if (listLoading) return <SkeletonList rows={3} />;
   // Distinct from "no watchlists yet" below -- an error here isn't a reason
   // to tell the user to go create one, that would just be misleading.
   if (listError)
@@ -31,7 +32,7 @@ export function WatchlistStrip() {
     );
   }
 
-  if (detailLoading) return <p className="text-sm text-text-secondary">Loading...</p>;
+  if (detailLoading) return <SkeletonList rows={3} />;
   if (detailError || !detail)
     return <p className="text-sm text-loss">Couldn&apos;t load this watchlist right now.</p>;
 

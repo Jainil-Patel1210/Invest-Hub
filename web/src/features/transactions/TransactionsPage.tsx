@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTransactions } from "../../api/hooks/transactions";
 import { formatINR } from "../../lib/format";
+import { SkeletonList } from "../../components/Skeleton";
 
 export function TransactionsPage() {
   const [symbol, setSymbol] = useState("");
@@ -97,7 +98,7 @@ export function TransactionsPage() {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-text-secondary">Loading...</p>
+        <SkeletonList rows={6} />
       ) : !data || data.transactions.length === 0 ? (
         <p className="text-sm text-text-secondary">No transactions match these filters.</p>
       ) : (

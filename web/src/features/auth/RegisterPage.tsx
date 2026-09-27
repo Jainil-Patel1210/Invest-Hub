@@ -46,7 +46,7 @@ export function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4 text-text-primary">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-8">
+      <div className="w-full max-w-sm panel p-8">
         <h1 className="mb-1 text-xl font-semibold">Create your account</h1>
         <p className="mb-6 text-sm text-text-secondary">
           Starts you with a virtual ₹10,00,000 to track a portfolio with.

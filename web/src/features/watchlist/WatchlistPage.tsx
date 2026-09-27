@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ApiError } from "../../api/client";
 import { useCreateWatchlist, useWatchlists } from "../../api/hooks/watchlists";
 import { WatchlistPanel } from "./components/WatchlistPanel";
+import { SkeletonList } from "../../components/Skeleton";
 
 export function WatchlistPage() {
   const { data: watchlists, isLoading } = useWatchlists();
@@ -41,7 +42,7 @@ export function WatchlistPage() {
     }
   }
 
-  if (isLoading) return <p className="text-sm text-text-secondary">Loading...</p>;
+  if (isLoading) return <SkeletonList rows={4} />;
 
   const selected = watchlists?.find((w) => w.id === selectedId) ?? null;
 

@@ -12,7 +12,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 export function FundamentalsPanel({ stock }: { stock: StockFundamentals }) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-5">
+    <div className="panel p-5">
       <h2 className="mb-4 text-sm font-semibold text-text-secondary">Fundamentals</h2>
       <div className="grid grid-cols-2 gap-4">
         <Stat label="Sector" value={stock.sector ?? "—"} />

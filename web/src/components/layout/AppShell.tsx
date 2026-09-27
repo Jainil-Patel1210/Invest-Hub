@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { useAuth } from "../../lib/useAuth";
+import { CommandPalette } from "../CommandPalette";
+import { UserMenu } from "./UserMenu";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard" },
@@ -12,11 +13,23 @@ const NAV_ITEMS = [
 ];
 
 export function AppShell() {
-  const { user, logout } = useAuth();
   // Below the `lg` breakpoint the sidebar becomes an off-canvas drawer,
   // closed by default -- above `lg` this state is simply never read (the
   // sidebar's `lg:translate-x-0 lg:static` always wins there regardless).
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Ctrl+K (Cmd+K on macOS) toggles the stock search from anywhere in the app.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsSearchOpen((open) => !open);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div className="flex h-screen bg-bg text-text-primary">
@@ -59,32 +72,35 @@ export function AppShell() {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setIsNavOpen(true)}
-              className="shrink-0 text-lg text-text-secondary hover:text-text-primary lg:hidden"
-              aria-label="Open menu"
-            >
-              ☰
-            </button>
-            <span className="hidden truncate text-sm text-text-secondary sm:inline">
-              {user?.email}
-            </span>
-          </div>
           <button
             type="button"
-            onClick={() => void logout()}
-            className="shrink-0 rounded-md border border-border px-3 py-1.5 text-sm text-text-secondary transition-colors hover:border-accent hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-muted"
+            onClick={() => setIsNavOpen(true)}
+            className="shrink-0 text-lg text-text-secondary hover:text-text-primary lg:hidden"
+            aria-label="Open menu"
           >
-            Log out
+            ☰
           </button>
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen(true)}
+              className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-text-secondary transition-colors hover:border-accent hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-muted"
+            >
+              Search stocks
+              <kbd className="hidden rounded border border-border px-1.5 text-xs text-text-tertiary sm:inline">
+                Ctrl K
+              </kbd>
+            </button>
+            <UserMenu />
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           <Outlet />
         </main>
       </div>
+
+      <CommandPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </div>
   );
 }

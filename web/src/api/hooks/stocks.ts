@@ -82,3 +82,21 @@ export function useStockHistory(symbol: string, range: HistoryRange) {
     select: (data) => data.candles,
   });
 }
+
+export interface CatalogStock {
+  symbol: string;
+  companyName: string;
+  exchange: "NSE" | "BSE";
+  sector: string | null;
+  quote: Quote | null;
+}
+
+/** The tracked-stock catalog with live quotes -- what the Stocks page shows before you type anything. */
+export function useCatalog() {
+  return useQuery({
+    queryKey: ["stocks", "catalog"],
+    queryFn: () => api.get<{ stocks: CatalogStock[] }>("/stocks?limit=60"),
+    select: (data) => data.stocks,
+    staleTime: 30_000,
+  });
+}

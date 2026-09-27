@@ -2,11 +2,12 @@ import { Link } from "react-router-dom";
 import { useMovers } from "../../../api/hooks/market";
 import { Delta } from "../../../components/Delta";
 import { formatINR } from "../../../lib/format";
+import { SkeletonList } from "../../../components/Skeleton";
 
 export function MoversList() {
   const { data, isLoading, isError } = useMovers(5);
 
-  if (isLoading) return <p className="text-sm text-text-secondary">Loading...</p>;
+  if (isLoading) return <SkeletonList rows={3} />;
   if (isError) return <p className="text-sm text-loss">Couldn&apos;t load movers right now.</p>;
 
   // Movers are scoped to stocks *you* track (holdings + watchlists) --

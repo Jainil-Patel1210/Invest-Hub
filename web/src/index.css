@@ -11,7 +11,7 @@
   --color-bg: #0f1115;
   --color-surface: #171a21;
   --color-surface-raised: #1e222b;
-  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border: rgba(255, 255, 255, 0.1);
 
   --color-text-primary: #e8eaed;
   --color-text-secondary: #9aa1ac;
@@ -48,4 +48,45 @@ body {
    price never jitters the layout around it. */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* Card/panel surface: hairline border plus a 1px inset top highlight and a
+   faint drop shadow, so panels separate from the page background without
+   the muddy look of a heavy shadow on a dark ground. */
+@utility panel {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* Shimmer placeholder used while data loads (see components/Skeleton.tsx). */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--color-surface-raised);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
 }

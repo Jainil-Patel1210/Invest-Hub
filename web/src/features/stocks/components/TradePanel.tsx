@@ -1,25 +1,33 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { useStockQuote } from "../../../api/hooks/stocks";
 import { useBuy, useSell } from "../../../api/hooks/trade";
 import { ApiError } from "../../../api/client";
 import { formatINR } from "../../../lib/format";
+import type { TradeSide } from "../../../lib/quickTradeContext";
 import { useAuth } from "../../../lib/useAuth";
 
 const TRADE_FEE = 20; // matches the backend's TRADE_FEE default; only used for the live estimate shown before submitting
 
-export function TradePanel({ symbol }: { symbol: string }) {
+interface TradePanelProps {
+  symbol: string;
+  initialSide?: TradeSide;
+  /** Called after an order succeeds -- the quick-trade modal uses it to close itself. */
+  onSuccess?: () => void;
+}
+
+export function TradePanel({ symbol, initialSide = "BUY", onSuccess }: TradePanelProps) {
   const { refreshUser } = useAuth();
   const { data: quote } = useStockQuote(symbol);
   const buy = useBuy();
   const sell = useSell();
 
-  const [side, setSide] = useState<"BUY" | "SELL">("BUY");
+  const [side, setSide] = useState<TradeSide>(initialSide);
   const [quantity, setQuantity] = useState(1);
   const [useCustomPrice, setUseCustomPrice] = useState(false);
   const [customPrice, setCustomPrice] = useState("");
-  const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(
-    null,
-  );
+  // Success is announced by a toast; only failures stay inline, next to the form that caused them.
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const mutation = side === "BUY" ? buy : sell;
   const effectivePrice = useCustomPrice ? Number(customPrice) : (quote?.price ?? null);
@@ -31,28 +39,27 @@ export function TradePanel({ symbol }: { symbol: string }) {
       : null;
 
   async function handleSubmit() {
-    setFeedback(null);
+    setErrorMessage(null);
     try {
       const result = await mutation.mutateAsync({
         symbol,
         quantity,
         price: useCustomPrice ? Number(customPrice) : undefined,
       });
-      setFeedback({
-        kind: "success",
-        message: `${side === "BUY" ? "Bought" : "Sold"} ${result.transaction.quantity} @ ${formatINR(result.transaction.price)}`,
-      });
+      toast.success(
+        `${side === "BUY" ? "Bought" : "Sold"} ${result.transaction.quantity} ${symbol} @ ${formatINR(result.transaction.price)}`,
+      );
       await refreshUser(); // reflects the new balance immediately, e.g. on the Account page
+      onSuccess?.();
     } catch (err) {
-      setFeedback({
-        kind: "error",
-        message: err instanceof ApiError ? err.message : "Something went wrong. Please try again.",
-      });
+      setErrorMessage(
+        err instanceof ApiError ? err.message : "Something went wrong. Please try again.",
+      );
     }
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-5">
+    <div className="panel p-5">
       <div className="mb-4 flex rounded-md border border-border p-0.5">
         {(["BUY", "SELL"] as const).map((s) => (
           <button
@@ -60,7 +67,7 @@ export function TradePanel({ symbol }: { symbol: string }) {
             type="button"
             onClick={() => {
               setSide(s);
-              setFeedback(null);
+              setErrorMessage(null);
             }}
             className={`flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
               side === s
@@ -114,14 +121,9 @@ export function TradePanel({ symbol }: { symbol: string }) {
         </span>
       </div>
 
-      {feedback && (
-        <p
-          className={`mt-3 rounded-md px-3 py-2 text-sm ${
-            feedback.kind === "success" ? "bg-gain-muted text-gain" : "bg-loss-muted text-loss"
-          }`}
-          role="alert"
-        >
-          {feedback.message}
+      {errorMessage && (
+        <p className="mt-3 rounded-md bg-loss-muted px-3 py-2 text-sm text-loss" role="alert">
+          {errorMessage}
         </p>
       )}
 

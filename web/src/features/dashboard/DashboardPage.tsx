@@ -22,6 +22,9 @@ export function DashboardPage() {
   const { data: holdings, isError: holdingsError } = usePortfolio();
 
   const cash = user?.accountBalance ?? 0;
+  // Until the summary arrives, net worth would silently equal cash alone --
+  // a wrong number shown as if it were right -- so it shows a skeleton instead.
+  const summaryPending = !summary && !summaryError;
   const netWorth = cash + (summary?.currentValue ?? 0);
 
   return (
@@ -29,31 +32,39 @@ export function DashboardPage() {
       <h1 className="text-lg font-semibold">Dashboard</h1>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatTile label="Net worth" value={formatINR(netWorth, 0)} />
+        <StatTile label="Net worth" value={formatINR(netWorth, 0)} loading={summaryPending} />
         <StatTile label="Cash balance" value={formatINR(cash, 0)} />
         {summaryError ? (
-          <div className="col-span-2 flex items-center rounded-lg border border-border bg-surface p-4">
+          <div className="col-span-2 flex items-center panel p-4">
             <SectionError />
           </div>
         ) : (
-          summary && (
-            <>
-              <StatTile
-                label="Total P&L"
-                value={formatINR(summary.totalPnl, 0)}
-                delta={<Delta value={summary.totalPnlPct} kind="percent" showGlyph />}
-              />
-              <StatTile
-                label="Day P&L"
-                value={<Delta value={summary.dayPnl} kind="currency" showGlyph />}
-              />
-            </>
-          )
+          <>
+            {summaryPending && (
+              <>
+                <StatTile label="Total P&L" value="" loading />
+                <StatTile label="Day P&L" value="" loading />
+              </>
+            )}
+            {summary && (
+              <>
+                <StatTile
+                  label="Total P&L"
+                  value={formatINR(summary.totalPnl, 0)}
+                  delta={<Delta value={summary.totalPnlPct} kind="percent" showGlyph />}
+                />
+                <StatTile
+                  label="Day P&L"
+                  value={<Delta value={summary.dayPnl} kind="currency" showGlyph />}
+                />
+              </>
+            )}
+          </>
         )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border border-border bg-surface p-5">
+        <div className="panel p-5">
           <h2 className="mb-4 text-sm font-semibold text-text-secondary">Sector allocation</h2>
           {summaryError ? (
             <SectionError />
@@ -66,17 +77,17 @@ export function DashboardPage() {
           )}
         </div>
 
-        <div className="rounded-lg border border-border bg-surface p-5">
+        <div className="panel p-5">
           <h2 className="mb-4 text-sm font-semibold text-text-secondary">Top holdings</h2>
           {holdingsError ? <SectionError /> : <TopHoldings holdings={holdings ?? []} />}
         </div>
 
-        <div className="rounded-lg border border-border bg-surface p-5">
+        <div className="panel p-5">
           <h2 className="mb-4 text-sm font-semibold text-text-secondary">Movers</h2>
           <MoversList />
         </div>
 
-        <div className="rounded-lg border border-border bg-surface p-5">
+        <div className="panel p-5">
           <WatchlistStrip />
         </div>
       </div>

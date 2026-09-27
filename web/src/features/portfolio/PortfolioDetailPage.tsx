@@ -3,6 +3,7 @@ import { ApiError } from "../../api/client";
 import { usePortfolioDetail } from "../../api/hooks/portfolio";
 import { Delta } from "../../components/Delta";
 import { formatINR } from "../../lib/format";
+import { SkeletonList } from "../../components/Skeleton";
 
 export function PortfolioDetailPage() {
   const { symbol } = useParams<{ symbol: string }>();
@@ -10,7 +11,7 @@ export function PortfolioDetailPage() {
 
   if (!symbol) return null;
 
-  if (isLoading) return <p className="text-sm text-text-secondary">Loading...</p>;
+  if (isLoading) return <SkeletonList rows={5} />;
 
   if (isError) {
     const notFound = error instanceof ApiError && error.code === "NOT_FOUND";
@@ -50,7 +51,7 @@ export function PortfolioDetailPage() {
         <p className="text-sm text-text-secondary">{holding.symbol}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-surface p-5 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 panel p-5 sm:grid-cols-4">
         <div>
           <div className="text-xs text-text-secondary">Quantity</div>
           <div className="tabular-nums">{holding.quantity}</div>

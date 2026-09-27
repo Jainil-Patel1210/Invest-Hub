@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { ApiError } from "../../../api/client";
 import { useStockSearch } from "../../../api/hooks/stocks";
 import {
@@ -11,13 +12,15 @@ import {
   type WatchlistSummary,
 } from "../../../api/hooks/watchlists";
 import { Delta } from "../../../components/Delta";
+import { SkeletonList } from "../../../components/Skeleton";
 import { formatINR } from "../../../lib/format";
 import { useDebouncedValue } from "../../../lib/useDebouncedValue";
+import { useQuickTrade } from "../../../lib/useQuickTrade";
 
 function AddStockSearch({ watchlistId }: { watchlistId: number }) {
   const [query, setQuery] = useState("");
   const debounced = useDebouncedValue(query, 300);
-  const { data: results } = useStockSearch(debounced);
+  const { data: results, isFetching } = useStockSearch(debounced);
   const addStock = useAddStockToWatchlist();
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +28,7 @@ function AddStockSearch({ watchlistId }: { watchlistId: number }) {
     setError(null);
     try {
       await addStock.mutateAsync({ watchlistId, symbol });
+      toast.success(`Added ${symbol}`);
       setQuery("");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
@@ -40,6 +44,11 @@ function AddStockSearch({ watchlistId }: { watchlistId: number }) {
         onChange={(e) => setQuery(e.target.value)}
         className="w-64 rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-accent-muted"
       />
+      {debounced.trim() !== "" && results && results.length === 0 && !isFetching && (
+        <p className="absolute right-0 z-10 mt-1 w-64 rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text-secondary shadow-lg">
+          No stocks found.
+        </p>
+      )}
       {debounced.trim() !== "" && results && results.length > 0 && (
         <div className="absolute right-0 z-10 mt-1 w-64 rounded-md border border-border bg-surface-raised shadow-lg">
           {results.slice(0, 6).map((r) => (
@@ -66,6 +75,7 @@ export function WatchlistPanel({ watchlist }: { watchlist: WatchlistSummary }) {
   const rename = useRenameWatchlist();
   const removeStock = useRemoveStockFromWatchlist();
   const deleteWatchlist = useDeleteWatchlist();
+  const { openTrade } = useQuickTrade();
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(watchlist.name);
@@ -86,8 +96,17 @@ export function WatchlistPanel({ watchlist }: { watchlist: WatchlistSummary }) {
     }
   }
 
+  async function handleRemove(symbol: string) {
+    try {
+      await removeStock.mutateAsync({ watchlistId: watchlist.id, symbol });
+      toast.success(`Removed ${symbol} from ${watchlist.name}`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't remove that stock.");
+    }
+  }
+
   if (isLoading || !data) {
-    return <p className="text-sm text-text-secondary">Loading...</p>;
+    return <SkeletonList rows={4} />;
   }
 
   return (
@@ -182,7 +201,7 @@ export function WatchlistPanel({ watchlist }: { watchlist: WatchlistSummary }) {
               {data.items.map((item) => (
                 <tr
                   key={item.symbol}
-                  className="border-b border-border last:border-0 hover:bg-surface-raised"
+                  className="group border-b border-border last:border-0 hover:bg-surface-raised"
                 >
                   <td className="px-4 py-2.5">
                     <Link
@@ -200,19 +219,33 @@ export function WatchlistPanel({ watchlist }: { watchlist: WatchlistSummary }) {
                     {item.quote ? <Delta value={item.quote.dayChangePct} kind="percent" /> : "—"}
                   </td>
                   <td className="px-4 py-2.5 text-right">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void removeStock.mutateAsync({
-                          watchlistId: watchlist.id,
-                          symbol: item.symbol,
-                        })
-                      }
-                      className="text-text-tertiary hover:text-loss"
-                      aria-label={`Remove ${item.symbol}`}
-                    >
-                      ✕
-                    </button>
+                    {/* Hover-revealed on pointer devices; group-focus-within keeps
+                        them reachable by keyboard, and touch screens (no hover)
+                        always see them. */}
+                    <div className="flex items-center justify-end gap-2 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+                      <button
+                        type="button"
+                        onClick={() => openTrade(item.symbol, "BUY")}
+                        className="rounded-md bg-gain-muted px-2.5 py-1 text-xs font-medium text-gain hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-muted"
+                      >
+                        Buy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openTrade(item.symbol, "SELL")}
+                        className="rounded-md bg-loss-muted px-2.5 py-1 text-xs font-medium text-loss hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-muted"
+                      >
+                        Sell
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleRemove(item.symbol)}
+                        className="px-1 text-text-tertiary hover:text-loss focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-muted"
+                        aria-label={`Remove ${item.symbol}`}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -7,6 +7,7 @@ import { FundamentalsPanel } from "./components/FundamentalsPanel";
 import { PriceChart } from "./components/PriceChart";
 import { TradePanel } from "./components/TradePanel";
 import { WatchlistButton } from "./components/WatchlistButton";
+import { SkeletonList } from "../../components/Skeleton";
 
 export function StockDetailPage() {
   const { symbol } = useParams<{ symbol: string }>();
@@ -16,7 +17,7 @@ export function StockDetailPage() {
   if (!symbol) return null;
 
   if (stockQuery.isLoading) {
-    return <p className="text-sm text-text-secondary">Loading...</p>;
+    return <SkeletonList rows={5} />;
   }
 
   if (stockQuery.isError) {
@@ -62,7 +63,7 @@ export function StockDetailPage() {
         <WatchlistButton symbol={symbol} />
       </div>
 
-      <div className="rounded-lg border border-border bg-surface p-5">
+      <div className="panel p-5">
         <PriceChart symbol={symbol} />
       </div>
 
