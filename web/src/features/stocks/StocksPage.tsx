@@ -32,7 +32,7 @@ export function StocksPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-lg font-semibold">Stocks</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Stocks</h1>
         {!isSearching && sectors.length > 0 && (
           <select
             value={sector}
@@ -94,7 +94,7 @@ export function StocksPage() {
       ) : visibleCatalog.length === 0 ? (
         <p className="text-sm text-text-secondary">No stocks in this sector.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="overflow-x-auto panel">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-surface text-text-secondary">
@@ -124,7 +124,7 @@ export function StocksPage() {
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     {s.quote ? (
-                      <Delta value={s.quote.dayChangePct} kind="percent" showGlyph />
+                      <Delta value={s.quote.dayChangePct} kind="percent" showGlyph pill />
                     ) : (
                       "—"
                     )}

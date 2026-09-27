@@ -51,6 +51,8 @@ export interface PricingProvider {
   /** Bulk variant of getQuote: one round trip for many symbols. Symbols the
    *  source can't price are silently omitted rather than failing the batch. */
   getQuotes(symbols: string[]): Promise<Quote[]>;
+  /** Quotes for market indices (e.g. "^NSEI"). Indices aren't rows in `stocks`, so they bypass the stock cache. */
+  getIndexQuotes(symbols: string[]): Promise<Quote[]>;
   getFundamentals(symbol: string): Promise<StockFundamentals>;
   /** `from`/`to` are ISO calendar dates ("YYYY-MM-DD") -- deliberately not
    *  Date objects. A date range like this has no time-of-day or timezone

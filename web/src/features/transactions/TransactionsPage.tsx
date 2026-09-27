@@ -33,7 +33,7 @@ export function TransactionsPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-lg font-semibold">Transactions</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Transactions</h1>
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-xs text-text-secondary">
@@ -103,7 +103,7 @@ export function TransactionsPage() {
         <p className="text-sm text-text-secondary">No transactions match these filters.</p>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-border">
+          <div className="overflow-x-auto panel">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface text-text-secondary">
@@ -139,7 +139,7 @@ export function TransactionsPage() {
                     </td>
                     <td className="px-4 py-2.5">
                       <span
-                        className={`rounded px-1.5 py-0.5 text-xs font-medium ${
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                           tx.type === "BUY" ? "bg-gain-muted text-gain" : "bg-loss-muted text-loss"
                         }`}
                       >

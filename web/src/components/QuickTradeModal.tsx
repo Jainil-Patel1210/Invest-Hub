@@ -38,14 +38,14 @@ export function QuickTradeModal({ symbol, initialSide, onClose }: QuickTradeModa
         aria-modal="true"
         aria-label={`Trade ${symbol}`}
         tabIndex={-1}
-        className="w-full max-w-sm rounded-lg border border-border bg-surface-raised p-4 outline-none"
+        className="glass w-full max-w-sm rounded-xl p-4 outline-none"
       >
         <div className="mb-3 flex items-start justify-between">
           <div>
             <div className="font-medium">{symbol}</div>
             {quote && (
               <div className="mt-0.5 flex items-center gap-2 text-sm">
-                <span className="font-mono tabular-nums">{formatINR(quote.price)}</span>
+                <span className="font-semibold tabular-nums">{formatINR(quote.price)}</span>
                 <Delta value={quote.dayChangePct} kind="percent" showGlyph />
               </div>
             )}

@@ -4,30 +4,41 @@
  * Tailwind v4 generates utility classes directly from these custom
  * properties -- a variable named --color-X here produces bg-X, text-X,
  * border-X, etc. automatically. No tailwind.config.js: theme customization
- * lives in CSS now. Values match .claude/skills/frontend-design/SKILL.md --
- * every color in the app should trace back to one of these tokens.
+ * lives in CSS now. Values follow the "Institutional Glass Fintech" design
+ * system (see .claude/skills/frontend-design/SKILL.md) -- every color in the
+ * app should trace back to one of these tokens.
  */
 @theme {
-  --color-bg: #0f1115;
-  --color-surface: #171a21;
-  --color-surface-raised: #1e222b;
-  --color-border: rgba(255, 255, 255, 0.1);
+  /* Surfaces: page < sidebar < card < raised (hover, popovers). */
+  --color-bg: #0f131d;
+  --color-sidebar: #0a0e18;
+  --color-surface: #1c1f2a;
+  --color-surface-raised: #262a35;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.16);
 
-  --color-text-primary: #e8eaed;
-  --color-text-secondary: #9aa1ac;
-  --color-text-tertiary: #5b616e;
+  --color-text-primary: #dfe2f1;
+  --color-text-secondary: #a9adc0;
+  --color-text-tertiary: #7d8298;
 
-  --color-accent: #3b82f6;
-  --color-accent-muted: rgba(59, 130, 246, 0.15);
+  /* Electric indigo. `accent` is the readable-on-dark tone for links, active
+     states and focus rings; `accent-strong` (light lavender, dark text) is the
+     primary button fill, as in the mockups. */
+  --color-accent: #8f92ff;
+  --color-accent-strong: #c0c1ff;
+  --color-on-accent-strong: #1000a9;
+  --color-accent-muted: rgba(128, 131, 255, 0.16);
+  --color-secondary: #4cd7f6;
   --color-highlight: #f59e0b;
 
-  --color-gain: #22c55e;
-  --color-gain-muted: rgba(34, 197, 94, 0.15);
-  --color-loss: #ef4444;
-  --color-loss-muted: rgba(239, 68, 68, 0.15);
-  --color-neutral: #8b93a1;
+  /* Signal colors: gains/losses only, never decoration. */
+  --color-gain: #4edea3;
+  --color-gain-muted: rgba(78, 222, 163, 0.14);
+  --color-loss: #fb7185;
+  --color-loss-muted: rgba(251, 113, 133, 0.14);
+  --color-neutral: #9aa0b5;
 
-  --font-sans: -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+  --font-sans: Inter, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
@@ -40,26 +51,79 @@ body {
   background: var(--color-bg);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Tabular numerals everywhere a price or quantity appears -- see the
-   frontend-design skill: this is the single highest-impact typography
-   detail for a finance UI, keeping digit widths fixed so a live-updating
-   price never jitters the layout around it. */
+/* Tabular numerals everywhere a price or quantity appears: digits stay
+   fixed-width so a live-updating price never jitters the layout around it.
+   The cv0x features are Inter's alternate digit shapes from the design system. */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "cv02" 1,
+    "cv03" 1,
+    "cv04" 1;
 }
 
-/* Card/panel surface: hairline border plus a 1px inset top highlight and a
-   faint drop shadow, so panels separate from the page background without
-   the muddy look of a heavy shadow on a dark ground. */
+/* Card/panel surface: hairline border, a 1px inset top highlight, and a
+   faint shadow, so panels separate from the page without a heavy drop shadow. */
 @utility panel {
-  border-radius: var(--radius-lg);
+  border-radius: 0.75rem;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* Translucent frosted surface for anything that floats above the page:
+   header, menus, palette, modals. */
+@utility glass {
+  background: rgba(22, 27, 40, 0.78);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 40px -6px rgba(0, 0, 0, 0.6);
+}
+
+/* Primary action: light lavender fill with dark text and a soft indigo glow. */
+@utility btn-primary {
+  background: var(--color-accent-strong);
+  color: var(--color-on-accent-strong);
+  font-weight: 500;
+  border-radius: 0.5rem;
+  box-shadow: 0 0 14px rgba(99, 102, 241, 0.3);
+  transition:
+    box-shadow 150ms ease,
+    filter 150ms ease;
+  &:hover:not(:disabled) {
+    filter: brightness(1.06);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.45);
+  }
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+/* Data tables: small uppercase headers, and a 2px indigo edge on the hovered
+   row (the design system's row-hover signature). */
+thead th {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  background: transparent;
+}
+
+tbody tr {
+  transition: background-color 150ms ease;
+}
+
+tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 2px 0 0 var(--color-accent);
 }
 
 /* Shimmer placeholder used while data loads (see components/Skeleton.tsx). */

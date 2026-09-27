@@ -61,7 +61,7 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-label="Search stocks"
-        className="w-full max-w-lg overflow-hidden rounded-lg border border-border bg-surface-raised shadow-lg"
+        className="glass w-full max-w-lg overflow-hidden rounded-xl"
       >
         <input
           ref={inputRef}
@@ -90,7 +90,7 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
                 onClick={() => open(r.symbol)}
                 onMouseEnter={() => setActiveIndex(i)}
                 className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm ${
-                  i === activeIndex ? "bg-bg" : ""
+                  i === activeIndex ? "bg-white/5 shadow-[inset_2px_0_0_var(--color-accent)]" : ""
                 }`}
               >
                 <span>

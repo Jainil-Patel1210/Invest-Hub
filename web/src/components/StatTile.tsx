@@ -13,12 +13,14 @@ interface StatTileProps {
 export function StatTile({ label, value, delta, loading = false }: StatTileProps) {
   return (
     <div className="panel p-4">
-      <div className="text-xs uppercase tracking-wide text-text-secondary">{label}</div>
+      <div className="text-xs font-medium tracking-wide text-text-secondary">{label}</div>
       {loading ? (
         <Skeleton className="mt-2 h-8 w-32" />
       ) : (
         <>
-          <div className="mt-1 font-mono text-2xl tabular-nums text-text-primary">{value}</div>
+          <div className="mt-1 text-[1.75rem] font-semibold leading-9 tracking-tight tabular-nums text-text-primary">
+            {value}
+          </div>
           {delta && <div className="mt-1 text-sm">{delta}</div>}
         </>
       )}

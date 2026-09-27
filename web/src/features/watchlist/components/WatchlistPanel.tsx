@@ -187,7 +187,7 @@ export function WatchlistPanel({ watchlist }: { watchlist: WatchlistSummary }) {
           No stocks in this watchlist yet -- add one above.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="overflow-x-auto panel">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-surface text-text-secondary">
@@ -216,7 +216,11 @@ export function WatchlistPanel({ watchlist }: { watchlist: WatchlistSummary }) {
                     {item.quote ? formatINR(item.quote.price) : "—"}
                   </td>
                   <td className="px-4 py-2.5 text-right">
-                    {item.quote ? <Delta value={item.quote.dayChangePct} kind="percent" /> : "—"}
+                    {item.quote ? (
+                      <Delta value={item.quote.dayChangePct} kind="percent" pill />
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     {/* Hover-revealed on pointer devices; group-focus-within keeps

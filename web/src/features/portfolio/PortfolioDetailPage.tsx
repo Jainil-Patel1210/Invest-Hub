@@ -88,7 +88,7 @@ export function PortfolioDetailPage() {
         {transactions.length === 0 ? (
           <p className="text-sm text-text-secondary">No transactions for this stock yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
+          <div className="overflow-x-auto panel">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface text-text-secondary">
@@ -112,7 +112,7 @@ export function PortfolioDetailPage() {
                     </td>
                     <td className="px-4 py-2.5">
                       <span
-                        className={`rounded px-1.5 py-0.5 text-xs font-medium ${
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                           tx.type === "BUY" ? "bg-gain-muted text-gain" : "bg-loss-muted text-loss"
                         }`}
                       >

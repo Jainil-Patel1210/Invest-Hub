@@ -48,7 +48,7 @@ export function WatchlistPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-lg font-semibold">Watchlist</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Watchlist</h1>
 
       <div className="flex flex-wrap items-center gap-1 border-b border-border pb-2">
         {watchlists?.map((w) => (

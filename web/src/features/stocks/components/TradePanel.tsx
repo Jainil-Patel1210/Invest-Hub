@@ -131,7 +131,7 @@ export function TradePanel({ symbol, initialSide = "BUY", onSuccess }: TradePane
         type="button"
         onClick={() => void handleSubmit()}
         disabled={mutation.isPending || (useCustomPrice && !customPrice)}
-        className={`mt-4 w-full rounded-md px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 ${
+        className={`mt-4 w-full rounded-lg px-3 py-2 text-sm font-semibold text-bg transition-[filter] hover:brightness-110 disabled:opacity-50 ${
           side === "BUY" ? "bg-gain" : "bg-loss"
         }`}
       >

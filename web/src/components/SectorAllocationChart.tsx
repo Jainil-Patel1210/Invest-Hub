@@ -24,7 +24,7 @@ const SECTOR_COLORS: Record<string, string> = {
   "Consumer Defensive": "#9085e9",
   "Communication Services": "#e66767",
 };
-const OTHER_COLOR = "#5b616e"; // --color-text-tertiary -- deliberately desaturated, this bucket isn't a real identity
+const OTHER_COLOR = "#7d8298"; // --color-text-tertiary -- deliberately desaturated, this bucket isn't a real identity
 
 // Rendering order is fixed too (this array's order), independent of each
 // sector's current value -- the same reasoning as the color assignment

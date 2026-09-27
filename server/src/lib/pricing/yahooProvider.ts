@@ -96,6 +96,11 @@ export class YahooPricingProvider implements PricingProvider {
     return quotes;
   }
 
+  // Same bulk call as getQuotes -- Yahoo prices an index like any other symbol.
+  getIndexQuotes(symbols: string[]): Promise<Quote[]> {
+    return this.getQuotes(symbols);
+  }
+
   async getFundamentals(symbol: string): Promise<StockFundamentals> {
     // .catch() chained directly on the Promise.all() call, rather than a
     // try/catch around pre-declared variables, lets TypeScript infer quote's

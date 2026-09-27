@@ -9,7 +9,7 @@ export function AccountPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold">Account</h1>
+      <h1 className="mb-4 text-2xl font-semibold tracking-tight">Account</h1>
       <div className="max-w-sm panel p-5">
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm">
           <dt className="text-text-secondary">Name</dt>

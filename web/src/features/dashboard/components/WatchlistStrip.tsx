@@ -60,7 +60,7 @@ export function WatchlistStrip() {
                     <span className="tabular-nums text-text-secondary">
                       {formatINR(item.quote.price)}
                     </span>
-                    <Delta value={item.quote.dayChangePct} kind="percent" />
+                    <Delta value={item.quote.dayChangePct} kind="percent" pill />
                   </span>
                 ) : (
                   <span className="text-text-secondary">—</span>

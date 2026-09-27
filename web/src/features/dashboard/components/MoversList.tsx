@@ -35,7 +35,7 @@ export function MoversList() {
                 <span className="text-text-primary">{q.symbol}</span>
                 <span className="flex items-center gap-2">
                   <span className="tabular-nums text-text-secondary">{formatINR(q.price)}</span>
-                  <Delta value={q.dayChangePct} kind="percent" />
+                  <Delta value={q.dayChangePct} kind="percent" pill />
                 </span>
               </Link>
             </li>
@@ -54,7 +54,7 @@ export function MoversList() {
                 <span className="text-text-primary">{q.symbol}</span>
                 <span className="flex items-center gap-2">
                   <span className="tabular-nums text-text-secondary">{formatINR(q.price)}</span>
-                  <Delta value={q.dayChangePct} kind="percent" />
+                  <Delta value={q.dayChangePct} kind="percent" pill />
                 </span>
               </Link>
             </li>

@@ -48,7 +48,7 @@ export function StockDetailPage() {
           <div className="mt-3 flex items-baseline gap-3">
             {quote ? (
               <>
-                <span className="font-mono text-3xl tabular-nums text-text-primary">
+                <span className="text-3xl font-semibold tracking-tight tabular-nums text-text-primary">
                   {formatINR(quote.price)}
                 </span>
                 <Delta value={quote.dayChange} kind="currency" showGlyph />

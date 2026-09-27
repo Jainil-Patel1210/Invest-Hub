@@ -186,6 +186,22 @@ export class CachedPricingProvider implements PricingProvider {
     return quote;
   }
 
+  // Index quotes have no `stocks` row (quote_cache has a foreign key to it),
+  // so they are cached in memory instead, with the same TTL as stock quotes.
+  private indexCache: { key: string; quotes: Quote[]; fetchedAt: number } | null = null;
+
+  async getIndexQuotes(symbols: string[]): Promise<Quote[]> {
+    const key = symbols.join(",");
+    const cached = this.indexCache;
+    if (cached && cached.key === key && Date.now() - cached.fetchedAt < QUOTE_TTL_SECONDS * 1000) {
+      return cached.quotes;
+    }
+
+    const quotes = await this.inner.getIndexQuotes(symbols);
+    this.indexCache = { key, quotes, fetchedAt: Date.now() };
+    return quotes;
+  }
+
   /** Bulk upsert into quote_cache: one statement for any number of quotes (unnest turns parallel arrays into rows). */
   private async storeQuotes(quotes: Quote[]): Promise<void> {
     if (quotes.length === 0) return;

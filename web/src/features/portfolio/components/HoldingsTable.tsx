@@ -67,7 +67,7 @@ export function HoldingsTable({ holdings }: { holdings: EnrichedHolding[] }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <div className="overflow-x-auto panel">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border bg-surface">

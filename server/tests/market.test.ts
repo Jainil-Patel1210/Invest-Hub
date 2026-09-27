@@ -32,4 +32,12 @@ describe("market", () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ gainers: [], losers: [] });
   });
+
+  it("returns live NIFTY 50 and SENSEX quotes without authentication", async () => {
+    const res = await request(app).get("/api/market/indices");
+
+    expect(res.status).toBe(200);
+    expect(res.body.indices.map((i: { name: string }) => i.name)).toEqual(["NIFTY 50", "SENSEX"]);
+    expect(res.body.indices[0].quote.price).toBeGreaterThan(0);
+  });
 });

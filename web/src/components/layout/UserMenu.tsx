@@ -34,16 +34,13 @@ export function UserMenu() {
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-label="Account menu"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-muted text-sm font-medium text-accent transition-colors hover:bg-accent hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-muted"
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-muted text-sm font-semibold text-accent-strong transition-colors hover:bg-accent-strong hover:text-on-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-muted"
       >
         {initial}
       </button>
 
       {isOpen && (
-        <div
-          role="menu"
-          className="absolute right-0 z-40 mt-2 w-56 rounded-md border border-border bg-surface-raised py-1 shadow-lg"
-        >
+        <div role="menu" className="glass absolute right-0 z-40 mt-2 w-56 rounded-xl py-1">
           <div className="border-b border-border px-3 py-2">
             {user?.fullName && <div className="truncate text-sm font-medium">{user.fullName}</div>}
             <div className="truncate text-xs text-text-secondary">{user?.email}</div>
@@ -52,7 +49,7 @@ export function UserMenu() {
             to="/account"
             role="menuitem"
             onClick={() => setIsOpen(false)}
-            className="block px-3 py-2 text-sm text-text-secondary hover:bg-bg hover:text-text-primary"
+            className="block px-3 py-2 text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary"
           >
             Account
           </Link>
@@ -60,7 +57,7 @@ export function UserMenu() {
             type="button"
             role="menuitem"
             onClick={() => void logout()}
-            className="block w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg hover:text-text-primary"
+            className="block w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary"
           >
             Log out
           </button>

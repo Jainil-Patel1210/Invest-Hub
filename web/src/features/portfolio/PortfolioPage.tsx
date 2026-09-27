@@ -12,7 +12,7 @@ export function PortfolioPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-lg font-semibold">Portfolio</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Portfolio</h1>
 
       {summaryLoading && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
