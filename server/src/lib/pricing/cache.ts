@@ -249,9 +249,11 @@ export class CachedPricingProvider implements PricingProvider {
 
   /**
    * Bulk quotes: fresh ones come from quote_cache in one query, and every
-   * stale/missing one is fetched from the inner provider in a single batched
-   * call. Only symbols already in `stocks` are considered (quote_cache has a
-   * foreign key to it) -- unknown symbols are omitted, not looked up.
+   * stale/missing one is fetched from the inner provider in parallel (see
+   * yahooProvider's getQuotes for why that's per-symbol requests now, not one
+   * batched call). Only symbols already in `stocks` are considered
+   * (quote_cache has a foreign key to it) -- unknown symbols are omitted, not
+   * looked up.
    */
   async getQuotes(symbols: string[]): Promise<Quote[]> {
     if (symbols.length === 0) return [];

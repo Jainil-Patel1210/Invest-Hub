@@ -38,7 +38,7 @@ function isNotFoundError(err: unknown): boolean {
   return err instanceof Error && /quote not found|no data found|delisted/i.test(err.message);
 }
 
-/** The subset of yahoo-finance2's quote object that a Quote is built from. */
+/** The subset of quoteSummary's `price` module that a Quote is built from. */
 interface RawQuote {
   symbol?: string;
   regularMarketPrice?: number;
@@ -68,32 +68,53 @@ function toQuote(symbol: string, q: RawQuote): Quote | null {
   };
 }
 
+/**
+ * Live price for one symbol via quoteSummary's `price` module, not the
+ * dedicated quote() endpoint. Deliberate: `.quote()` (and the array form
+ * used for batches) sits behind Yahoo's crumb/cookie anti-bot flow, which in
+ * practice gets silently blocked from a lot of cloud-hosting IP ranges
+ * (Render's among them, confirmed by this failing in production while
+ * working from a home network) -- while `.quoteSummary()` and `.chart()`
+ * keep working. `price` carries the exact same field names `.quote()` did,
+ * so `toQuote` needs no change, only where the data comes from.
+ */
+async function fetchQuoteViaSummary(symbol: string): Promise<Quote> {
+  const summary = await yahooFinance
+    .quoteSummary(symbol, { modules: ["price"] })
+    .catch((err: unknown) => {
+      if (isNotFoundError(err)) throw new SymbolNotFoundError(symbol);
+      throw err;
+    });
+
+  // quoteSummary's `price` module reports regularMarketChangePercent as a raw
+  // fraction (0.0056), not the plain percent number (0.56) the old flat
+  // quote() endpoint gave -- confirmed directly, real values differ by 100x
+  // between the two for the same symbol at the same moment. Dropping it here
+  // forces toQuote's own price/prevClose fallback math, which is scale-safe
+  // by construction rather than trusting an endpoint-specific convention.
+  const raw: RawQuote = { ...(summary.price as RawQuote), regularMarketChangePercent: undefined };
+  const quote = toQuote(symbol, raw);
+  if (!quote) throw new SymbolNotFoundError(symbol);
+  return quote;
+}
+
 export class YahooPricingProvider implements PricingProvider {
-  async getQuote(symbol: string): Promise<Quote> {
-    // Confirmed directly: quote() resolves to `undefined` for an unknown
-    // symbol rather than throwing -- a third distinct "not found" convention
-    // alongside the two below. `!q` must be checked before touching any
-    // field on it.
-    const q = await yahooFinance.quote(symbol);
-    const quote = q ? toQuote(symbol, q as RawQuote) : null;
-    if (!quote) throw new SymbolNotFoundError(symbol);
-    return quote;
+  getQuote(symbol: string): Promise<Quote> {
+    return fetchQuoteViaSummary(symbol);
   }
 
   async getQuotes(symbols: string[]): Promise<Quote[]> {
     if (symbols.length === 0) return [];
 
-    // Passing an array makes yahoo-finance2 issue a single HTTP request for
-    // the whole batch (instead of N), and unknown symbols are simply absent
-    // from the result array rather than throwing.
-    const results = await yahooFinance.quote(symbols);
+    // No array form here (unlike the old .quote() batch call) -- one
+    // quoteSummary request per symbol, in parallel. A symbol that fails
+    // (unknown, or a transient hiccup) is simply left out of the result
+    // rather than failing the whole batch, via allSettled.
+    const results = await Promise.allSettled(symbols.map((s) => fetchQuoteViaSummary(s)));
 
-    const quotes: Quote[] = [];
-    for (const q of results) {
-      const quote = toQuote(q.symbol, q as RawQuote);
-      if (quote) quotes.push(quote);
-    }
-    return quotes;
+    return results
+      .filter((r): r is PromiseFulfilledResult<Quote> => r.status === "fulfilled")
+      .map((r) => r.value);
   }
 
   // Yahoo serves an index's daily chart exactly like a stock's.
@@ -107,37 +128,37 @@ export class YahooPricingProvider implements PricingProvider {
   }
 
   async getFundamentals(symbol: string): Promise<StockFundamentals> {
-    // .catch() chained directly on the Promise.all() call, rather than a
-    // try/catch around pre-declared variables, lets TypeScript infer quote's
-    // and summary's types normally from Promise.all's own overloads --
-    // yahooFinance.quoteSummary is itself overloaded/generic, and manually
-    // annotating hoisted variables with ReturnType<typeof ...> for it
-    // resolves to `unknown` because ReturnType can't know which overload a
-    // specific call would pick.
-    const [quote, summary] = await Promise.all([
-      yahooFinance.quote(symbol),
-      yahooFinance.quoteSummary(symbol, { modules: ["assetProfile"] }),
-    ]).catch((err: unknown) => {
-      if (isNotFoundError(err)) throw new SymbolNotFoundError(symbol);
-      throw err;
-    });
+    // One quoteSummary call across four modules, rather than quote() +
+    // quoteSummary(assetProfile) -- see fetchQuoteViaSummary's comment on
+    // why .quote() is avoided entirely now. Company name/currency/market cap
+    // come from `price`; P/E, EPS and the 52-week range live in
+    // `summaryDetail`/`defaultKeyStatistics` instead of quote()'s flatter
+    // shape, but under the same values (verified directly against real data).
+    const summary = await yahooFinance
+      .quoteSummary(symbol, {
+        modules: ["price", "summaryDetail", "defaultKeyStatistics", "assetProfile"],
+      })
+      .catch((err: unknown) => {
+        if (isNotFoundError(err)) throw new SymbolNotFoundError(symbol);
+        throw err;
+      });
 
-    if (!quote || !quote.longName) {
+    if (!summary.price?.longName) {
       throw new SymbolNotFoundError(symbol);
     }
 
     return {
       symbol,
       exchange: exchangeFromSymbol(symbol),
-      companyName: quote.longName,
+      companyName: summary.price.longName,
       sector: summary.assetProfile?.sector ?? null,
       industry: summary.assetProfile?.industry ?? null,
-      currency: quote.currency ?? "INR",
-      marketCap: quote.marketCap ?? null,
-      peRatio: quote.trailingPE ?? null,
-      eps: quote.epsTrailingTwelveMonths ?? null,
-      week52High: quote.fiftyTwoWeekHigh ?? null,
-      week52Low: quote.fiftyTwoWeekLow ?? null,
+      currency: summary.price.currency ?? "INR",
+      marketCap: summary.price.marketCap ?? summary.summaryDetail?.marketCap ?? null,
+      peRatio: summary.summaryDetail?.trailingPE ?? null,
+      eps: summary.defaultKeyStatistics?.trailingEps ?? null,
+      week52High: summary.summaryDetail?.fiftyTwoWeekHigh ?? null,
+      week52Low: summary.summaryDetail?.fiftyTwoWeekLow ?? null,
     };
   }
 
